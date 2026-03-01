@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Card Tracker - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>Card Tracker</h1>
+        <span>Welcome, {{ current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}">Logout</a>
+    </nav>
+    <div class="dashboard-container">
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>Total Invested</h3>
+                <p>${{ "%.2f"|format(total_invested) }}</p>
+            </div>
+            <div class="summary-card">
+                <h3>Total Value</h3>
+                <p>${{ "%.2f"|format(total_value) }}</p>
+            </div>
+            <div class="summary-card {% if total_profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+                <h3>Total Profit/Loss</h3>
+                <p>${{ "%.2f"|format(total_profit_loss) }}</p>
+            </div>
+        </div>
+        <a href="#" class="btn">+ Add New Card</a>
+        <p>You have {{ cards|length }} card(s) in your collection.</p>
+    </div>
+</body>
+</html>
