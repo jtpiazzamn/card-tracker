@@ -57,6 +57,7 @@
                             {% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}
                         </p>
                     {% endif %}
+                    <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn-search">🔍 Search Price</a>
                     <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">Delete</a>
                 </div>
             </div>

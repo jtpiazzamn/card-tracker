@@ -43,5 +43,6 @@ nav a { color: #e94560; text-decoration: none; }
 .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .form-buttons { display: flex; justify-content: space-between; margin-top: 25px; }
-```
+.btn-search { background: none; color: #1a1a2e; border: 1px solid #1a1a2e; padding: 5px 12px; border-radius: 5px; text-decoration: none; font-size: 12px; display: inline-block; margin-top: 8px; margin-right: 5px; }
+.btn-search:hover { background: #1a1a2e; color: white; }
 

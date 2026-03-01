@@ -1,10 +1,14 @@
 from flask import Flask
 from flask_login import LoginManager
 from models import db, User
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 def create_app():
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'your-secret-key-change-this-later'
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cards.db'
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
 
