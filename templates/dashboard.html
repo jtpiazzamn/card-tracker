@@ -25,8 +25,48 @@
                 <p>${{ "%.2f"|format(total_profit_loss) }}</p>
             </div>
         </div>
-        <a href="#" class="btn">+ Add New Card</a>
-        <p>You have {{ cards|length }} card(s) in your collection.</p>
+
+        <div class="dashboard-header">
+            <h2>My Cards ({{ cards|length }})</h2>
+            <a href="{{ url_for('main.add_card') }}" class="btn">+ Add New Card</a>
+        </div>
+
+        {% if cards %}
+        <div class="card-grid">
+            {% for card in cards %}
+            <div class="card-item">
+                {% if card.photo_filename %}
+                    <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
+                {% else %}
+                    <div class="no-photo">No Photo</div>
+                {% endif %}
+                <div class="card-info">
+                    <h3>{{ card.player_name }}</h3>
+                    <p>{{ card.year }} {{ card.manufacturer }} {{ card.sport }}</p>
+                    <p>Condition: {{ card.condition }}</p>
+                    <div class="card-prices">
+                        <span>Paid: ${{ "%.2f"|format(card.buy_price) }}</span>
+                        {% if card.sell_price %}
+                            <span>Sold: ${{ "%.2f"|format(card.sell_price) }}</span>
+                        {% elif card.market_price %}
+                            <span>Market: ${{ "%.2f"|format(card.market_price) }}</span>
+                        {% endif %}
+                    </div>
+                    {% if card.profit_loss is not none %}
+                        <p class="{% if card.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
+                            {% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}
+                        </p>
+                    {% endif %}
+                    <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">Delete</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <p>No cards yet. Add your first card to get started!</p>
+        </div>
+        {% endif %}
     </div>
 </body>
 </html>
