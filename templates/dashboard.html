@@ -47,8 +47,14 @@
                 </div>
                 <a href="{{ url_for('main.add_card') }}" class="btn">+ Add Card</a>
             </div>
+            <div class="search-bar-wrapper">
+                <input type="text" id="cardSearch" placeholder="🔍  Search by player, sport, year, manufacturer..." onkeyup="filterCards()">
+            </div>
 
             {% if cards %}
+            <div id="no-results" style="display:none;" class="empty-state">
+                <p>No cards match your search.</p>
+            </div>
             <div class="card-grid">
                 {% for card in cards %}
                 <div class="card-item">
@@ -90,5 +96,31 @@
 
         </div>
     </div>
+    <script>
+function filterCards() {
+    const input = document.getElementById('cardSearch').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('.card-item');
+    let visibleCount = 0;
+
+    cards.forEach(card => {
+        const playerName = card.querySelector('.card-link') ? card.querySelector('.card-link').innerText.toLowerCase() : '';
+        const cardText = card.querySelector('.card-info').innerText.toLowerCase();
+        
+        if (playerName.includes(input) || cardText.includes(input)) {
+            card.style.display = 'block';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    const emptyMsg = document.getElementById('no-results');
+    if (visibleCount === 0 && input.length > 0) {
+        emptyMsg.style.display = 'block';
+    } else {
+        emptyMsg.style.display = 'none';
+    }
+}
+</script>
 </body>
 </html>
