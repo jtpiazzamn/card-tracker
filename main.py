@@ -49,7 +49,6 @@ def add_card():
                 photo.save(os.path.join(upload_folder, filename))
                 photo_filename = filename
 
-        # Search for market price automatically
         market_price = None
         if player_name:
             price, error = search_card_price(
@@ -82,6 +81,48 @@ def add_card():
 
     return render_template('add_card.html')
 
+@main.route('/edit_card/<int:card_id>', methods=['GET', 'POST'])
+@login_required
+def edit_card(card_id):
+    card = Card.query.get_or_404(card_id)
+    if card.user_id != current_user.id:
+        flash('Permission denied.')
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        card.player_name = request.form.get('player_name')
+        card.sport = request.form.get('sport')
+        card.year = request.form.get('year')
+        card.manufacturer = request.form.get('manufacturer')
+        card.condition = request.form.get('condition')
+        card.buy_price = float(request.form.get('buy_price'))
+        sell_price = request.form.get('sell_price')
+        card.sell_price = float(sell_price) if sell_price else None
+
+        if 'photo' in request.files:
+            photo = request.files['photo']
+            if photo and allowed_file(photo.filename):
+                filename = secure_filename(photo.filename)
+                upload_folder = 'static/uploads'
+                os.makedirs(upload_folder, exist_ok=True)
+                photo.save(os.path.join(upload_folder, filename))
+                card.photo_filename = filename
+
+        db.session.commit()
+        flash('Card updated successfully!')
+        return redirect(url_for('main.card_detail', card_id=card.id))
+
+    return render_template('edit_card.html', card=card)
+
+@main.route('/card/<int:card_id>')
+@login_required
+def card_detail(card_id):
+    card = Card.query.get_or_404(card_id)
+    if card.user_id != current_user.id:
+        flash('Permission denied.')
+        return redirect(url_for('main.dashboard'))
+    return render_template('card_detail.html', card=card)
+
 @main.route('/search_price/<int:card_id>')
 @login_required
 def search_price(card_id):
@@ -99,7 +140,7 @@ def search_price(card_id):
         db.session.commit()
         flash(f'Market price updated to ${price:.2f}')
     else:
-        flash(f'Could not find market price. Try again later.')
+        flash('Could not find market price. Try again later.')
 
     return redirect(url_for('main.dashboard'))
 
@@ -108,7 +149,7 @@ def search_price(card_id):
 def delete_card(card_id):
     card = Card.query.get_or_404(card_id)
     if card.user_id != current_user.id:
-        flash('You do not have permission to delete this card.')
+        flash('Permission denied.')
         return redirect(url_for('main.dashboard'))
     db.session.delete(card)
     db.session.commit()

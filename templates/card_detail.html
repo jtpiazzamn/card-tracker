@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Card Tracker - {{ card.player_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>Card Tracker</h1>
+        <span>Welcome, {{ current_user.username }}</span>
+        <a href="{{ url_for('auth.logout') }}">Logout</a>
+    </nav>
+    <div class="detail-container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+        <div class="detail-back">
+            <a href="{{ url_for('main.dashboard') }}">← Back to Dashboard</a>
+        </div>
+        <div class="detail-card">
+            <div class="detail-photo">
+                {% if card.photo_filename %}
+                    <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
+                {% else %}
+                    <div class="no-photo-large">No Photo</div>
+                {% endif %}
+            </div>
+            <div class="detail-info">
+                <h2>{{ card.player_name }}</h2>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <span class="detail-label">Sport</span>
+                        <span class="detail-value">{{ card.sport or 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Year</span>
+                        <span class="detail-value">{{ card.year or 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Manufacturer</span>
+                        <span class="detail-value">{{ card.manufacturer or 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Condition</span>
+                        <span class="detail-value">{{ card.condition or 'N/A' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Date Added</span>
+                        <span class="detail-value">{{ card.date_added.strftime('%B %d, %Y') if card.date_added else 'N/A' }}</span>
+                    </div>
+                </div>
+                <div class="detail-prices">
+                    <div class="price-box">
+                        <span class="price-label">Paid</span>
+                        <span class="price-value">${{ "%.2f"|format(card.buy_price) }}</span>
+                    </div>
+                    {% if card.sell_price %}
+                    <div class="price-box">
+                        <span class="price-label">Sold For</span>
+                        <span class="price-value">${{ "%.2f"|format(card.sell_price) }}</span>
+                    </div>
+                    {% endif %}
+                    {% if card.market_price %}
+                    <div class="price-box">
+                        <span class="price-label">Market Price</span>
+                        <span class="price-value">${{ "%.2f"|format(card.market_price) }}</span>
+                    </div>
+                    {% endif %}
+                    {% if card.profit_loss is not none %}
+                    <div class="price-box {% if card.profit_loss >= 0 %}profit-box{% else %}loss-box{% endif %}">
+                        <span class="price-label">Profit / Loss</span>
+                        <span class="price-value">{% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="detail-actions">
+                    <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn">🔍 Update Market Price</a>
+                    <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn btn-edit">✏️ Edit Card</a>
+                    <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">🗑️ Delete Card</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

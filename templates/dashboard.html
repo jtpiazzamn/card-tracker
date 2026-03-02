@@ -41,7 +41,7 @@
                     <div class="no-photo">No Photo</div>
                 {% endif %}
                 <div class="card-info">
-                    <h3>{{ card.player_name }}</h3>
+                    <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
                     <p>{{ card.year }} {{ card.manufacturer }} {{ card.sport }}</p>
                     <p>Condition: {{ card.condition }}</p>
                     <div class="card-prices">
