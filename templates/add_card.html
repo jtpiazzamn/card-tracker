@@ -6,9 +6,11 @@
 </head>
 <body>
     <nav>
-        <h1>Card Tracker</h1>
-        <span>Welcome, {{ current_user.username }}</span>
-        <a href="{{ url_for('auth.logout') }}">Logout</a>
+        <h1>Card<span>Tracker</span></h1>
+        <div class="nav-right">
+            <span>Welcome, {{ current_user.username }}</span>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
     </nav>
     <div class="form-container">
         <h2>Add New Card</h2>

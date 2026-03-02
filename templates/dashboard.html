@@ -6,68 +6,89 @@
 </head>
 <body>
     <nav>
-        <h1>Card Tracker</h1>
-        <span>Welcome, {{ current_user.username }}</span>
-        <a href="{{ url_for('auth.logout') }}">Logout</a>
+        <h1>Card<span>Tracker</span></h1>
+        <div class="nav-right">
+            <span>Welcome, {{ current_user.username }}</span>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
     </nav>
-    <div class="dashboard-container">
-        <div class="summary-cards">
-            <div class="summary-card">
-                <h3>Total Invested</h3>
-                <p>${{ "%.2f"|format(total_invested) }}</p>
-            </div>
-            <div class="summary-card">
-                <h3>Total Value</h3>
-                <p>${{ "%.2f"|format(total_value) }}</p>
-            </div>
-            <div class="summary-card {% if total_profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                <h3>Total Profit/Loss</h3>
-                <p>${{ "%.2f"|format(total_profit_loss) }}</p>
-            </div>
-        </div>
-
-        <div class="dashboard-header">
-            <h2>My Cards ({{ cards|length }})</h2>
-            <a href="{{ url_for('main.add_card') }}" class="btn">+ Add New Card</a>
-        </div>
-
-        {% if cards %}
-        <div class="card-grid">
-            {% for card in cards %}
-            <div class="card-item">
-                {% if card.photo_filename %}
-                    <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
-                {% else %}
-                    <div class="no-photo">No Photo</div>
+    <div class="page-wrapper">
+        <div class="dashboard-container">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert" style="margin-bottom:20px;">{{ messages[0] }}</div>
                 {% endif %}
-                <div class="card-info">
-                    <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
-                    <p>{{ card.year }} {{ card.manufacturer }} {{ card.sport }}</p>
-                    <p>Condition: {{ card.condition }}</p>
-                    <div class="card-prices">
-                        <span>Paid: ${{ "%.2f"|format(card.buy_price) }}</span>
-                        {% if card.sell_price %}
-                            <span>Sold: ${{ "%.2f"|format(card.sell_price) }}</span>
-                        {% elif card.market_price %}
-                            <span>Market: ${{ "%.2f"|format(card.market_price) }}</span>
-                        {% endif %}
+            {% endwith %}
+
+            <div class="stats-banner">
+                <div class="stat-block">
+                    <div class="stat-label">Total Cards</div>
+                    <div class="stat-value">{{ cards|length }}</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">Total Invested</div>
+                    <div class="stat-value">${{ "%.2f"|format(total_invested) }}</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">Total Value</div>
+                    <div class="stat-value">${{ "%.2f"|format(total_value) }}</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">Profit / Loss</div>
+                    <div class="stat-value {% if total_profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+                        {% if total_profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(total_profit_loss) }}
                     </div>
-                    {% if card.profit_loss is not none %}
-                        <p class="{% if card.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
-                            {% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}
-                        </p>
-                    {% endif %}
-                    <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn-search">🔍 Search Price</a>
-                    <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">Delete</a>
                 </div>
             </div>
-            {% endfor %}
+
+            <div class="section-header">
+                <div class="section-title">
+                    My Collection <span>{{ cards|length }}</span>
+                </div>
+                <a href="{{ url_for('main.add_card') }}" class="btn">+ Add Card</a>
+            </div>
+
+            {% if cards %}
+            <div class="card-grid">
+                {% for card in cards %}
+                <div class="card-item">
+                    {% if card.photo_filename %}
+                        <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
+                    {% else %}
+                        <div class="no-photo">No Photo</div>
+                    {% endif %}
+                    <div class="card-info">
+                        <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
+                        <p>{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
+                        <p>{{ card.condition }}</p>
+                        <div class="card-prices">
+                            <span>Paid: ${{ "%.2f"|format(card.buy_price) }}</span>
+                            {% if card.market_price %}
+                                <span>Mkt: ${{ "%.2f"|format(card.market_price) }}</span>
+                            {% endif %}
+                        </div>
+                        {% if card.profit_loss is not none %}
+                            <p class="{% if card.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
+                                {% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}
+                            </p>
+                        {% endif %}
+                        <div class="card-actions">
+                            <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn-search">🔍 Price</a>
+                            <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn-search">✏️ Edit</a>
+                            <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">🗑️</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>No cards in your collection yet.</p>
+                <a href="{{ url_for('main.add_card') }}" class="btn">+ Add Your First Card</a>
+            </div>
+            {% endif %}
+
         </div>
-        {% else %}
-        <div class="empty-state">
-            <p>No cards yet. Add your first card to get started!</p>
-        </div>
-        {% endif %}
     </div>
 </body>
 </html>
