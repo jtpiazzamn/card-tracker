@@ -16,15 +16,62 @@ def allowed_file(filename):
 @main.route('/dashboard')
 @login_required
 def dashboard():
-    cards = Card.query.filter_by(user_id=current_user.id).all()
-    total_invested = sum(card.buy_price for card in cards)
-    total_value = sum(card.market_price or card.sell_price or card.buy_price for card in cards)
+    sport_filter = request.args.get('sport', 'all')
+    sort_by = request.args.get('sort', 'date')
+
+    query = Card.query.filter_by(user_id=current_user.id)
+
+    if sport_filter != 'all':
+        query = query.filter_by(sport=sport_filter)
+
+    if sort_by == 'value_high':
+        cards = sorted(query.all(), key=lambda c: c.market_price or c.sell_price or c.buy_price, reverse=True)
+    elif sort_by == 'value_low':
+        cards = sorted(query.all(), key=lambda c: c.market_price or c.sell_price or c.buy_price)
+    elif sort_by == 'profit_high':
+        cards = sorted(query.all(), key=lambda c: c.profit_loss or 0, reverse=True)
+    elif sort_by == 'profit_low':
+        cards = sorted(query.all(), key=lambda c: c.profit_loss or 0)
+    elif sort_by == 'name':
+        cards = sorted(query.all(), key=lambda c: c.player_name)
+    else:
+        cards = query.order_by(Card.date_added.desc()).all()
+
+    all_cards = Card.query.filter_by(user_id=current_user.id).all()
+    total_invested = sum(card.buy_price for card in all_cards)
+
+    est_market_value = sum(
+        card.market_price or card.buy_price
+        for card in all_cards
+        if not card.sell_price
+    )
+
+    realized_gains = sum(
+        card.sell_price - card.buy_price
+        for card in all_cards
+        if card.sell_price
+    )
+
+    total_value = sum(
+        card.sell_price if card.sell_price
+        else (card.market_price or card.buy_price)
+        for card in all_cards
+    )
+
     total_profit_loss = total_value - total_invested
+
+    sports = ['Baseball', 'Basketball', 'Football', 'Hockey', 'Soccer', 'Other']
+
     return render_template('dashboard.html',
         cards=cards,
         total_invested=total_invested,
         total_value=total_value,
-        total_profit_loss=total_profit_loss
+        total_profit_loss=total_profit_loss,
+        est_market_value=est_market_value,
+        realized_gains=realized_gains,
+        sport_filter=sport_filter,
+        sort_by=sort_by,
+        sports=sports
     )
 
 @main.route('/add_card', methods=['GET', 'POST'])
