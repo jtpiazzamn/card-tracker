@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Card Tracker - Admin Panel</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>Card<span>Tracker</span></h1>
+        <div class="nav-right">
+            <span>Welcome, {{ current_user.username }}</span>
+            <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
+    </nav>
+    <div class="page-wrapper">
+        <div class="dashboard-container">
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="stats-banner">
+                <div class="stat-block">
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-value">{{ total_users }}</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">Total Cards</div>
+                    <div class="stat-value">{{ total_cards }}</div>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <div class="section-title">User Accounts <span>{{ total_users }}</span></div>
+            </div>
+
+            <div class="admin-table-wrapper">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Date Joined</th>
+                            <th>Cards</th>
+                            <th>Invested</th>
+                            <th>Value</th>
+                            <th>Profit/Loss</th>
+                            <th>Role</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in user_data %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td><strong>{{ user.username }}</strong></td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.date_joined.strftime('%Y-%m-%d') if user.date_joined else 'N/A' }}</td>
+                            <td>{{ user.card_count }}</td>
+                            <td>${{ "%.2f"|format(user.total_invested) }}</td>
+                            <td>${{ "%.2f"|format(user.total_value) }}</td>
+                            <td class="{% if user.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
+                                {% if user.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(user.profit_loss) }}
+                            </td>
+                            <td>
+                                {% if user.is_admin %}
+                                    <span class="badge-admin">Admin</span>
+                                {% else %}
+                                    <span class="badge-user">User</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="admin-actions">
+                                    {% if not user.is_admin %}
+                                        <a href="{{ url_for('admin.make_admin', user_id=user.id) }}" class="btn-search">Make Admin</a>
+                                    {% else %}
+                                        <a href="{{ url_for('admin.remove_admin', user_id=user.id) }}" class="btn-search">Remove Admin</a>
+                                    {% endif %}
+                                    {% if user.id != current_user.id %}
+                                        <a href="{{ url_for('admin.delete_user', user_id=user.id) }}" class="btn-delete" onclick="return confirm('Delete {{ user.username }}?')">Delete</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</body>
+</html>
