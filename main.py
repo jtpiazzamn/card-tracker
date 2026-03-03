@@ -190,7 +190,44 @@ def search_price(card_id):
         flash('Could not find market price. Try again later.')
 
     return redirect(url_for('main.dashboard'))
+@main.route('/export_csv')
+@login_required
+def export_csv():
+    import csv
+    import io
+    from flask import Response
 
+    cards = Card.query.filter_by(user_id=current_user.id).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        'Player Name', 'Sport', 'Year', 'Manufacturer',
+        'Condition', 'Buy Price', 'Sell Price', 'Market Price',
+        'Profit/Loss', 'Date Added'
+    ])
+
+    for card in cards:
+        writer.writerow([
+            card.player_name,
+            card.sport or '',
+            card.year or '',
+            card.manufacturer or '',
+            card.condition or '',
+            f'${card.buy_price:.2f}',
+            f'${card.sell_price:.2f}' if card.sell_price else '',
+            f'${card.market_price:.2f}' if card.market_price else '',
+            f'${card.profit_loss:.2f}' if card.profit_loss is not None else '',
+            card.date_added.strftime('%Y-%m-%d') if card.date_added else ''
+        ])
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=card-collection.csv'}
+    )
 @main.route('/delete_card/<int:card_id>')
 @login_required
 def delete_card(card_id):
