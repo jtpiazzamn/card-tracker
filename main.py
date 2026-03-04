@@ -4,6 +4,7 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 from models import db, Card
 from search import search_card_price
+from PIL import Image
 
 main = Blueprint('main', __name__)
 
@@ -11,7 +12,10 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
+def resize_image(filepath, max_size=(800, 800)):
+    img = Image.open(filepath)
+    img.thumbnail(max_size, Image.LANCZOS)
+    img.save(filepath, optimize=True, quality=85)
 @main.route('/')
 @main.route('/dashboard')
 @login_required
@@ -93,7 +97,9 @@ def add_card():
                 filename = secure_filename(photo.filename)
                 upload_folder = 'static/uploads'
                 os.makedirs(upload_folder, exist_ok=True)
-                photo.save(os.path.join(upload_folder, filename))
+                filepath = os.path.join(upload_folder, filename)
+                photo.save(filepath)
+                resize_image(filepath)
                 photo_filename = filename
 
         market_price = None
@@ -152,9 +158,10 @@ def edit_card(card_id):
                 filename = secure_filename(photo.filename)
                 upload_folder = 'static/uploads'
                 os.makedirs(upload_folder, exist_ok=True)
-                photo.save(os.path.join(upload_folder, filename))
+                filepath = os.path.join(upload_folder, filename)
+                photo.save(filepath)
+                resize_image(filepath)
                 card.photo_filename = filename
-
         db.session.commit()
         flash('Card updated successfully!')
         return redirect(url_for('main.card_detail', card_id=card.id))
