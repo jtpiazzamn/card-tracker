@@ -545,3 +545,34 @@ nav a:hover { background: #c73652; }
 .admin-actions { display: flex; gap: 6px; }
 .badge-admin { background: #e94560; color: white; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
 .badge-user { background: #eee; color: #666; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+@media (max-width: 768px) {
+    .stats-banner {
+        flex-wrap: wrap;
+        padding: 20px;
+        gap: 15px;
+    }
+    .stat-block {
+        flex: 1 1 45%;
+        min-width: 120px;
+        padding: 10px;
+    }
+    .stat-value {
+        font-size: 24px;
+    }
+    .stat-label {
+        font-size: 10px;
+        letter-spacing: 1px;
+    }
+    .stat-block:not(:last-child)::after {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .stat-block {
+        flex: 1 1 100%;
+    }
+    .stats-banner {
+        padding: 15px;
+    }
+}
