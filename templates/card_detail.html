@@ -6,12 +6,15 @@
 </head>
 <body>
     <nav>
-        <h1>Card Tracker</h1>
-        <span>Welcome, {{ current_user.username }}</span>
-        {% if current_user.is_admin %}
-    <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
-{% endif %}
-<a href="{{ url_for('auth.logout') }}">Logout</a>
+        <h1>Card<span>Tracker</span></h1>
+        <div class="nav-right">
+            <span>Welcome, {{ current_user.username }}</span>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('main.lots') }}" style="background:#0f3460;">Lots</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
     </nav>
     <div class="detail-container">
         {% with messages = get_flashed_messages() %}
@@ -78,6 +81,12 @@
                     </div>
                     {% endif %}
                 </div>
+                {% if card.notes %}
+                <div style="margin-bottom:20px; padding:15px; background:#f8f9fa; border-radius:8px; border-left:3px solid #e94560;">
+                    <span style="font-size:11px; font-weight:700; color:#888; letter-spacing:1px;">NOTES</span>
+                    <p style="margin:5px 0 0; color:#444; font-size:14px;">{{ card.notes }}</p>
+                </div>
+                {% endif %}
                 <div class="detail-actions">
                     <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn">🔍 Update Market Price</a>
                     <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn btn-edit">✏️ Edit Card</a>

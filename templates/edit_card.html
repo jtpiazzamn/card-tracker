@@ -10,9 +10,10 @@
         <div class="nav-right">
             <span>Welcome, {{ current_user.username }}</span>
             {% if current_user.is_admin %}
-    <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
-{% endif %}
-<a href="{{ url_for('auth.logout') }}">Logout</a>
+                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('main.lots') }}" style="background:#0f3460;">Lots</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
         </div>
     </nav>
     <div class="form-container">
@@ -70,6 +71,10 @@
                     <label>Sell Price (if sold)</label>
                     <input type="number" name="sell_price" step="0.01" value="{{ card.sell_price or '' }}">
                 </div>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea name="notes" placeholder="e.g. Purchased at card show, signed copy, PSA graded..." rows="3" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-family:inherit; font-size:14px; resize:vertical;">{{ card.notes or '' }}</textarea>
             </div>
             <div class="form-group">
                 <label>Card Photo (leave blank to keep current)</label>

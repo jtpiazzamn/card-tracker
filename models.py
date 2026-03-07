@@ -48,6 +48,7 @@ class Card(db.Model):
     date_added = db.Column(db.DateTime, default=db.func.current_timestamp())
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     lot_id = db.Column(db.Integer, db.ForeignKey('lot.id'), nullable=True)
+    notes = db.Column(db.String(1000))
 
     @property
     def profit_loss(self):

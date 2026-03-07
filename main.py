@@ -91,6 +91,7 @@ def add_card():
         condition = request.form.get('condition')
         buy_price = request.form.get('buy_price')
         sell_price = request.form.get('sell_price')
+        notes = request.form.get('notes')
 
         photo_filename = None
         if 'photo' in request.files:
@@ -122,6 +123,7 @@ def add_card():
             sell_price=float(sell_price) if sell_price else None,
             photo_filename=photo_filename,
             market_price=market_price,
+            notes=notes,
             user_id=current_user.id
         )
         db.session.add(new_card)
@@ -153,6 +155,7 @@ def edit_card(card_id):
         card.buy_price = float(request.form.get('buy_price'))
         sell_price = request.form.get('sell_price')
         card.sell_price = float(sell_price) if sell_price else None
+        card
 
         if 'photo' in request.files:
             photo = request.files['photo']
