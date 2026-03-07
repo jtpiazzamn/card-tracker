@@ -576,3 +576,23 @@ nav a:hover { background: #c73652; }
         padding: 15px;
     }
 }
+.import-columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.import-col {
+    background: #f0f2f5;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #555;
+    border: 1px solid #ddd;
+}
+.import-col.required {
+    background: #fff0f0;
+    color: #e94560;
+    border-color: #e94560;
+}

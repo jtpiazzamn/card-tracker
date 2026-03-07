@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Card Tracker - Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
@@ -12,6 +13,8 @@
             {% if current_user.is_admin %}
     <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
 {% endif %}
+<a href="{{ url_for('main.lots') }}" style="background:#0f3460;">Lots</a>
+<a href="{{ url_for('auth.logout') }}">Logout</a>
 <a href="{{ url_for('auth.logout') }}">Logout</a>
         </div>
     </nav>
@@ -55,7 +58,8 @@
                     My Collection <span>{{ cards|length }}</span>
                 </div>
                 <div style="display:flex; gap:10px;">
-    <a href="{{ url_for('main.export_csv') }}" class="btn btn-export">📥 Export CSV</a>
+    <a href="{{ url_for('main.export_csv') }}" class="btn btn-export">📥 Export</a>
+    <a href="{{ url_for('main.import_cards') }}" class="btn" style="background:#0f3460;">📤 Import</a>
     <a href="{{ url_for('main.add_card') }}" class="btn">+ Add Card</a>
 </div>
             </div>
@@ -81,6 +85,11 @@
             <option value="profit_high" {% if sort_by == 'profit_high' %}selected{% endif %}>Sort: Profit High</option>
             <option value="profit_low" {% if sort_by == 'profit_low' %}selected{% endif %}>Sort: Profit Low</option>
         </select>
+        <select onchange="toggleSold(this.value)" class="filter-select">
+            <option value="hide">Hide Sold</option>
+            <option value="show">Show Sold</option>
+        </select>
+    </div>
     </div>
 </div>
 

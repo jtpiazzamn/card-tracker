@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CardLedger - Create Lot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>Card<span>Tracker</span></h1>
+        <div class="nav-right">
+            <span>Welcome, {{ current_user.username }}</span>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
+    </nav>
+    <div class="page-wrapper">
+        <div class="dashboard-container">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert" style="margin-bottom:20px;">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+
+            <div class="section-header">
+                <div class="section-title">Create Lot Sale</div>
+                <a href="{{ url_for('main.lots') }}" class="btn" style="background:#666;">Cancel</a>
+            </div>
+
+            <div style="background:white; padding:30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-top:20px;">
+                <form method="POST">
+                    <div class="form-group">
+                        <label>Lot Name</label>
+                        <input type="text" name="name" placeholder="e.g. Baseball Commons Lot" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Total Sale Price ($)</label>
+                        <input type="number" name="total_sale_price" step="0.01" min="0" placeholder="0.00" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notes (optional)</label>
+                        <input type="text" name="notes" placeholder="e.g. Sold on eBay">
+                    </div>
+
+                    <div class="form-group">
+                        <label style="margin-bottom:10px; display:block;">Select Cards for this Lot</label>
+
+                        {% if cards %}
+                        <div style="margin-bottom:10px;">
+                            <button type="button" onclick="selectAll()" style="background:#0f3460; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:13px; margin-right:8px;">Select All</button>
+                            <button type="button" onclick="clearAll()" style="background:#888; color:white; border:none; padding:6px 14px; border-radius:6px; cursor:pointer; font-size:13px;">Clear All</button>
+                            <span id="selected-count" style="margin-left:12px; font-size:13px; color:#888;">0 cards selected</span>
+                        </div>
+
+                        <div style="border:1px solid #eee; border-radius:8px; max-height:400px; overflow-y:auto;">
+                            {% for card in cards %}
+                            <label style="display:flex; align-items:center; padding:12px 15px; border-bottom:1px solid #f5f5f5; cursor:pointer; gap:12px;">
+                                <input type="checkbox" name="card_ids" value="{{ card.id }}" onchange="updateCount()" style="width:18px; height:18px; cursor:pointer;">
+                                <div style="flex:1;">
+                                    <strong style="color:#1a1a2e;">{{ card.player_name }}</strong>
+                                    <span style="color:#888; font-size:13px;">
+                                        {% if card.year %} · {{ card.year }}{% endif %}
+                                        {% if card.manufacturer %} · {{ card.manufacturer }}{% endif %}
+                                        {% if card.sport %} · {{ card.sport }}{% endif %}
+                                        {% if card.condition %} · {{ card.condition }}{% endif %}
+                                    </span>
+                                </div>
+                                <div style="text-align:right; font-size:13px;">
+                                    <span style="color:#888;">Paid: </span>
+                                    <strong>${{ "%.2f"|format(card.buy_price) }}</strong>
+                                </div>
+                            </label>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div style="padding:20px; text-align:center; color:#888; background:#f8f9fa; border-radius:8px;">
+                            No unsold cards available. All cards have already been sold or assigned to a lot.
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div style="margin-top:25px; display:flex; gap:10px;">
+                        <a href="{{ url_for('main.lots') }}" class="btn" style="background:#666;">Cancel</a>
+                        <button type="submit" class="btn">Create Lot</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateCount() {
+            const checked = document.querySelectorAll('input[name="card_ids"]:checked').length;
+            document.getElementById('selected-count').textContent = checked + ' card' + (checked !== 1 ? 's' : '') + ' selected';
+        }
+
+        function selectAll() {
+            document.querySelectorAll('input[name="card_ids"]').forEach(cb => cb.checked = true);
+            updateCount();
+        }
+
+        function clearAll() {
+            document.querySelectorAll('input[name="card_ids"]').forEach(cb => cb.checked = false);
+            updateCount();
+        }
+    </script>
+</body>
+</html>

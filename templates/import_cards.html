@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CardLedger - Import Cards</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>Card<span>Tracker</span></h1>
+        <div class="nav-right">
+            <span>Welcome, {{ current_user.username }}</span>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
+    </nav>
+    <div class="form-wrapper">
+        <div class="form-container">
+            <h2>Import Cards</h2>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+
+            <p style="color:#666; margin-bottom:25px; font-size:14px;">
+                Upload a CSV or Excel file to bulk import cards into your collection.
+                Your file should have the following columns:
+            </p>
+
+            <div class="import-columns">
+                <div class="import-col required">Player Name *</div>
+                <div class="import-col required">Buy Price *</div>
+                <div class="import-col">Sport</div>
+                <div class="import-col">Year</div>
+                <div class="import-col">Manufacturer</div>
+                <div class="import-col">Condition</div>
+                <div class="import-col">Sell Price</div>
+                <div class="import-col">Market Price</div>
+            </div>
+
+            <p style="color:#999; font-size:12px; margin-bottom:25px;">* Required fields</p>
+
+            <form method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label>Select CSV or Excel File</label>
+                    <input type="file" name="file" accept=".csv,.xlsx" required>
+                </div>
+                <div class="form-buttons">
+                    <a href="{{ url_for('main.dashboard') }}" class="btn-cancel">Cancel</a>
+                    <button type="submit" class="btn">Import Cards</button>
+                </div>
+            </form>
+
+            <div style="margin-top:30px; padding:20px; background:#f8f9fa; border-radius:8px;">
+                <p style="font-size:13px; font-weight:700; color:#1a1a2e; margin-bottom:10px;">💡 TIP — Download your existing collection as a template:</p>
+                <a href="{{ url_for('main.export_csv') }}" class="btn btn-export">📥 Download CSV Template</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

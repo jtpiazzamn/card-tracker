@@ -2,7 +2,7 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, Card
+from models import db, Card, Lot
 from search import search_card_price
 from PIL import Image
 
@@ -12,10 +12,12 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 def resize_image(filepath, max_size=(800, 800)):
     img = Image.open(filepath)
     img.thumbnail(max_size, Image.LANCZOS)
     img.save(filepath, optimize=True, quality=85)
+
 @main.route('/')
 @main.route('/dashboard')
 @login_required
@@ -162,8 +164,9 @@ def edit_card(card_id):
                 photo.save(filepath)
                 resize_image(filepath)
                 card.photo_filename = filename
+
         db.session.commit()
-        flash('Card updated successfully!')
+        flash('Card updated successfully.')
         return redirect(url_for('main.card_detail', card_id=card.id))
 
     return render_template('edit_card.html', card=card)
@@ -197,6 +200,7 @@ def search_price(card_id):
         flash('Could not find market price. Try again later.')
 
     return redirect(url_for('main.dashboard'))
+
 @main.route('/export_csv')
 @login_required
 def export_csv():
@@ -235,6 +239,161 @@ def export_csv():
         mimetype='text/csv',
         headers={'Content-Disposition': 'attachment; filename=card-collection.csv'}
     )
+
+@main.route('/import_cards', methods=['GET', 'POST'])
+@login_required
+def import_cards():
+    import csv
+    import io
+    import openpyxl
+
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file selected.')
+            return redirect(url_for('main.import_cards'))
+
+        file = request.files['file']
+        if file.filename == '':
+            flash('No file selected.')
+            return redirect(url_for('main.import_cards'))
+
+        filename = file.filename.lower()
+        rows = []
+        errors = []
+        imported = 0
+
+        try:
+            if filename.endswith('.csv'):
+                stream = io.StringIO(file.stream.read().decode('utf-8'))
+                reader = csv.DictReader(stream)
+                rows = list(reader)
+
+            elif filename.endswith('.xlsx'):
+                wb = openpyxl.load_workbook(file)
+                ws = wb.active
+                headers = [cell.value for cell in ws[1]]
+                for row in ws.iter_rows(min_row=2, values_only=True):
+                    rows.append(dict(zip(headers, row)))
+
+            else:
+                flash('Please upload a CSV or Excel (.xlsx) file.')
+                return redirect(url_for('main.import_cards'))
+
+        except Exception as e:
+            flash(f'Error reading file: {str(e)}')
+            return redirect(url_for('main.import_cards'))
+
+        for i, row in enumerate(rows, start=2):
+            try:
+                player_name = row.get('Player Name') or row.get('player_name') or row.get('Name')
+                if not player_name:
+                    errors.append(f'Row {i}: Missing player name')
+                    continue
+
+                buy_price_raw = row.get('Buy Price') or row.get('buy_price') or '0'
+                buy_price_str = str(buy_price_raw).replace('$', '').replace(',', '').strip()
+                buy_price = float(buy_price_str) if buy_price_str else 0.0
+
+                sell_price_raw = row.get('Sell Price') or row.get('sell_price') or ''
+                sell_price_str = str(sell_price_raw).replace('$', '').replace(',', '').strip()
+                sell_price = float(sell_price_str) if sell_price_str else None
+
+                market_price_raw = row.get('Market Price') or row.get('market_price') or ''
+                market_price_str = str(market_price_raw).replace('$', '').replace(',', '').strip()
+                market_price = float(market_price_str) if market_price_str else None
+
+                new_card = Card(
+                    player_name=str(player_name).strip(),
+                    sport=str(row.get('Sport') or row.get('sport') or '').strip() or None,
+                    year=str(row.get('Year') or row.get('year') or '').strip() or None,
+                    manufacturer=str(row.get('Manufacturer') or row.get('manufacturer') or '').strip() or None,
+                    condition=str(row.get('Condition') or row.get('condition') or '').strip() or None,
+                    buy_price=buy_price,
+                    sell_price=sell_price,
+                    market_price=market_price,
+                    user_id=current_user.id
+                )
+                db.session.add(new_card)
+                imported += 1
+
+            except Exception as e:
+                errors.append(f'Row {i}: {str(e)}')
+
+        db.session.commit()
+
+        if errors:
+            flash(f'Imported {imported} cards. {len(errors)} rows had errors: {", ".join(errors[:3])}')
+        else:
+            flash(f'Successfully imported {imported} cards.')
+
+        return redirect(url_for('main.dashboard'))
+
+    return render_template('import_cards.html')
+
+@main.route('/lots')
+@login_required
+def lots():
+    lots = Lot.query.filter_by(user_id=current_user.id).order_by(Lot.date_sold.desc()).all()
+    return render_template('lots.html', lots=lots)
+
+@main.route('/create_lot', methods=['GET', 'POST'])
+@login_required
+def create_lot():
+    if request.method == 'POST':
+        name = request.form.get('name')
+        total_sale_price = float(request.form.get('total_sale_price'))
+        notes = request.form.get('notes')
+        card_ids = request.form.getlist('card_ids')
+
+        if not card_ids:
+            flash('Please select at least one card for the lot.')
+            return redirect(url_for('main.create_lot'))
+
+        new_lot = Lot(
+            name=name,
+            total_sale_price=total_sale_price,
+            notes=notes,
+            user_id=current_user.id
+        )
+        db.session.add(new_lot)
+        db.session.flush()
+
+        price_per_card = total_sale_price / len(card_ids)
+
+        for card_id in card_ids:
+            card = Card.query.get(int(card_id))
+            if card and card.user_id == current_user.id:
+                card.lot_id = new_lot.id
+                card.sell_price = round(price_per_card, 2)
+
+        db.session.commit()
+        flash(f'Lot created with {len(card_ids)} cards sold for ${total_sale_price:.2f}')
+        return redirect(url_for('main.lots'))
+
+    unsold_cards = Card.query.filter_by(
+        user_id=current_user.id,
+        lot_id=None
+    ).filter(Card.sell_price == None).order_by(Card.player_name).all()
+
+    return render_template('create_lot.html', cards=unsold_cards)
+
+@main.route('/delete_lot/<int:lot_id>')
+@login_required
+def delete_lot(lot_id):
+    lot = Lot.query.get_or_404(lot_id)
+    if lot.user_id != current_user.id:
+        flash('Permission denied.')
+        return redirect(url_for('main.lots'))
+
+    for card in lot.cards:
+        card.lot_id = None
+        card.sell_price = None
+
+    db.session.delete(lot)
+    db.session.commit()
+    flash('Lot deleted and cards returned to collection.')
+    return redirect(url_for('main.lots'))
+
 @main.route('/delete_card/<int:card_id>')
 @login_required
 def delete_card(card_id):
