@@ -155,7 +155,7 @@ def edit_card(card_id):
         card.buy_price = float(request.form.get('buy_price'))
         sell_price = request.form.get('sell_price')
         card.sell_price = float(sell_price) if sell_price else None
-        card
+        card.notes = request.form.get('notes')
 
         if 'photo' in request.files:
             photo = request.files['photo']
