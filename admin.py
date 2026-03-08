@@ -74,11 +74,16 @@ def create_user():
             flash('Username already exists.')
             return redirect(url_for('admin.create_user'))
 
+        security_question = request.form.get('security_question')
+        security_answer = request.form.get('security_answer', '').strip()
+
         new_user = User(
             username=username,
             email=email,
             password=generate_password_hash(password),
-            is_admin=is_admin
+            is_admin=is_admin,
+            security_question=security_question if security_question else None,
+            security_answer=security_answer.lower() if security_answer else None
         )
         db.session.add(new_user)
         db.session.commit()
@@ -195,6 +200,7 @@ def remove_admin(user_id):
     db.session.commit()
     flash(f'{user.username} admin status removed.')
     return redirect(url_for('admin.admin_dashboard'))
+
 @admin.route('/admin/reset_password/<int:user_id>', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -202,11 +208,25 @@ def reset_password(user_id):
     user = User.query.get_or_404(user_id)
     if request.method == 'POST':
         new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        security_answer = request.form.get('security_answer', '').strip().lower()
+
+        if new_password != confirm_password:
+            flash('Passwords do not match.')
+            return redirect(url_for('admin.reset_password', user_id=user_id))
+
+        if user.security_question and user.security_answer:
+            if security_answer != user.security_answer.lower():
+                flash('Incorrect security answer. Password was not reset.')
+                return redirect(url_for('admin.reset_password', user_id=user_id))
+
         user.password = generate_password_hash(new_password)
         db.session.commit()
-        flash(f'Password reset for {user.username}.')
+        flash(f'Password reset successfully for {user.username}.')
         return redirect(url_for('admin.admin_dashboard'))
+
     return render_template('admin_reset_password.html', user=user)
+
 @admin.route('/admin/delete_user/<int:user_id>')
 @login_required
 @admin_required
