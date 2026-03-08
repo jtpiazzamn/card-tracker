@@ -10,6 +10,7 @@
         <div class="nav-right">
             <span>Welcome, {{ current_user.username }}</span>
             <a href="{{ url_for('main.dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('main.lots') }}" style="background:#0f3460;">Lots</a>
             <a href="{{ url_for('auth.logout') }}">Logout</a>
         </div>
     </nav>
@@ -35,6 +36,10 @@
 
             <div class="section-header">
                 <div class="section-title">User Accounts <span>{{ total_users }}</span></div>
+                <div style="display:flex; gap:10px;">
+                    <a href="{{ url_for('admin.create_user') }}" class="btn" style="background:#0f3460;">+ Create User</a>
+                    <a href="{{ url_for('admin.import_for_user') }}" class="btn btn-export">Import Cards for User</a>
+                </div>
             </div>
 
             <div class="admin-table-wrapper">

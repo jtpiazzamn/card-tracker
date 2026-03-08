@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CardLedger - Import Cards for User</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>Card<span>Tracker</span></h1>
+        <div class="nav-right">
+            <span>Welcome, {{ current_user.username }}</span>
+            <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
+            <a href="{{ url_for('main.lots') }}" style="background:#0f3460;">Lots</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
+    </nav>
+    <div class="page-wrapper">
+        <div class="dashboard-container">
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert" style="margin-bottom:20px;">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+            <div class="section-header">
+                <div class="section-title">Import Cards for User</div>
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="background:#666;">Back to Admin</a>
+            </div>
+            <div style="background:white; padding:30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-top:20px;">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label>Select User</label>
+                        <select name="user_id" required class="filter-select" style="width:100%; padding:10px;">
+                            <option value="">Choose a user...</option>
+                            {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.username }} ({{ user.email }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Select CSV or Excel File</label>
+                        <input type="file" name="file" accept=".csv,.xlsx" required style="margin-top:8px; display:block;">
+                    </div>
+                    <div style="margin-top:25px; display:flex; gap:10px;">
+                        <a href="{{ url_for('admin.admin_dashboard') }}" class="btn" style="background:#666;">Cancel</a>
+                        <button type="submit" class="btn">Import Cards</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
