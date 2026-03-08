@@ -85,6 +85,7 @@
                                     {% else %}
                                         <a href="{{ url_for('admin.remove_admin', user_id=user.id) }}" class="btn-search">Remove Admin</a>
                                     {% endif %}
+                                    <a href="{{ url_for('admin.reset_password', user_id=user.id) }}" class="btn-search">Reset Password</a>
                                     {% if user.id != current_user.id %}
                                         <a href="{{ url_for('admin.delete_user', user_id=user.id) }}" class="btn-delete" onclick="return confirm('Delete {{ user.username }}?')">Delete</a>
                                     {% endif %}

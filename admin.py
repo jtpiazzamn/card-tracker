@@ -195,7 +195,18 @@ def remove_admin(user_id):
     db.session.commit()
     flash(f'{user.username} admin status removed.')
     return redirect(url_for('admin.admin_dashboard'))
-
+@admin.route('/admin/reset_password/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def reset_password(user_id):
+    user = User.query.get_or_404(user_id)
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        user.password = generate_password_hash(new_password)
+        db.session.commit()
+        flash(f'Password reset for {user.username}.')
+        return redirect(url_for('admin.admin_dashboard'))
+    return render_template('admin_reset_password.html', user=user)
 @admin.route('/admin/delete_user/<int:user_id>')
 @login_required
 @admin_required
