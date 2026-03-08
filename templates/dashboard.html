@@ -17,18 +17,6 @@
             <a href="{{ url_for('auth.logout') }}">Logout</a>
         </div>
     </nav>
-```
-
-Save with **Ctrl+S**, then push and deploy:
-```
-git add .
-git commit -m "Fix dashboard nav bar"
-git push
-```
-
-Then in PuTTY:
-```
-bash /root/deploy.sh
     <div class="page-wrapper">
         <div class="dashboard-container">
             {% with messages = get_flashed_messages() %}
