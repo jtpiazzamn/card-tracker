@@ -19,6 +19,16 @@
                 <input type="text" name="username" placeholder="Username" required>
                 <input type="email" name="email" placeholder="Email Address" required>
                 <input type="password" name="password" placeholder="Password" required>
+                <select name="security_question" required style="width:100%; padding:12px; margin-bottom:15px; border-radius:8px; border:1px solid #ddd; font-size:14px;">
+                    <option value="">-- Select a Security Question --</option>
+                    <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+                    <option value="What city were you born in?">What city were you born in?</option>
+                    <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+                    <option value="What was the name of your elementary school?">What was the name of your elementary school?</option>
+                    <option value="What was the make of your first car?">What was the make of your first car?</option>
+                    <option value="What is the name of your favorite sports team?">What is the name of your favorite sports team?</option>
+                </select>
+                <input type="text" name="security_answer" placeholder="Your answer (not case sensitive)" required>
                 <button type="submit">Create Account</button>
             </form>
             <p>Already have an account? <a href="{{ url_for('auth.login') }}">Sign in here</a></p>

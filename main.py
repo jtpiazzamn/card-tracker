@@ -408,3 +408,34 @@ def delete_card(card_id):
     db.session.commit()
     flash('Card deleted.')
     return redirect(url_for('main.dashboard'))
+@main.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    from werkzeug.security import generate_password_hash, check_password_hash
+    if request.method == 'POST':
+        current_password = request.form.get('current_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        security_question = request.form.get('security_question')
+        security_answer = request.form.get('security_answer', '').strip()
+
+        if not check_password_hash(current_user.password, current_password):
+            flash('Current password is incorrect.')
+            return redirect(url_for('main.change_password'))
+
+        if new_password != confirm_password:
+            flash('New passwords do not match.')
+            return redirect(url_for('main.change_password'))
+
+        current_user.password = generate_password_hash(new_password)
+
+        if security_question:
+            current_user.security_question = security_question
+        if security_answer:
+            current_user.security_answer = security_answer.lower().strip()
+
+        db.session.commit()
+        flash('Password and security question updated successfully.')
+        return redirect(url_for('main.dashboard'))
+
+    return render_template('change_password.html')

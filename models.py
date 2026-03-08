@@ -10,6 +10,8 @@ class User(UserMixin, db.Model):
     password = db.Column(db.String(150), nullable=False)
     is_admin = db.Column(db.Boolean, default=False)
     date_joined = db.Column(db.DateTime, default=db.func.current_timestamp())
+    security_question = db.Column(db.String(300))
+    security_answer = db.Column(db.String(300))
     cards = db.relationship('Card', backref='owner', lazy=True)
     lots = db.relationship('Lot', backref='owner', lazy=True)
 
