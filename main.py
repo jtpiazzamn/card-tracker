@@ -21,10 +21,14 @@ def resize_image(filepath, max_size=(800, 800)):
 @main.route('/')
 @main.route('/dashboard')
 @login_required
+@main.route('/')
+@main.route('/dashboard')
+@login_required
 def dashboard():
     sport_filter = request.args.get('sport', 'all')
     sort_by = request.args.get('sort', 'date')
     folder_filter = request.args.get('folder', 'all')
+    view_mode = request.args.get('view', 'all')
 
     query = Card.query.filter_by(user_id=current_user.id)
 
@@ -72,6 +76,10 @@ def dashboard():
     sports = ['Baseball', 'Basketball', 'Football', 'Hockey', 'Soccer', 'Other']
     folders = Folder.query.filter_by(user_id=current_user.id).order_by(Folder.name).all()
 
+    unassigned_cards = Card.query.filter_by(
+        user_id=current_user.id, folder_id=None
+    ).order_by(Card.date_added.desc()).all()
+
     return render_template('dashboard.html',
         cards=cards,
         total_invested=total_invested,
@@ -83,7 +91,9 @@ def dashboard():
         sort_by=sort_by,
         sports=sports,
         folders=folders,
-        folder_filter=folder_filter
+        folder_filter=folder_filter,
+        view_mode=view_mode,
+        unassigned_cards=unassigned_cards
     )
 
 @main.route('/add_card', methods=['GET', 'POST'])
