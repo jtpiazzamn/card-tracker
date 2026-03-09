@@ -2,7 +2,7 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, Card, Lot
+from models import db, Card, Lot, Folder
 from search import search_card_price
 from PIL import Image
 
@@ -24,11 +24,15 @@ def resize_image(filepath, max_size=(800, 800)):
 def dashboard():
     sport_filter = request.args.get('sport', 'all')
     sort_by = request.args.get('sort', 'date')
+    folder_filter = request.args.get('folder', 'all')
 
     query = Card.query.filter_by(user_id=current_user.id)
 
     if sport_filter != 'all':
         query = query.filter_by(sport=sport_filter)
+
+    if folder_filter != 'all':
+        query = query.filter_by(folder_id=int(folder_filter))
 
     if sort_by == 'value_high':
         cards = sorted(query.all(), key=lambda c: c.market_price or c.sell_price or c.buy_price, reverse=True)
@@ -65,8 +69,8 @@ def dashboard():
     )
 
     total_profit_loss = total_value - total_invested
-
     sports = ['Baseball', 'Basketball', 'Football', 'Hockey', 'Soccer', 'Other']
+    folders = Folder.query.filter_by(user_id=current_user.id).order_by(Folder.name).all()
 
     return render_template('dashboard.html',
         cards=cards,
@@ -77,12 +81,15 @@ def dashboard():
         realized_gains=realized_gains,
         sport_filter=sport_filter,
         sort_by=sort_by,
-        sports=sports
+        sports=sports,
+        folders=folders,
+        folder_filter=folder_filter
     )
 
 @main.route('/add_card', methods=['GET', 'POST'])
 @login_required
 def add_card():
+    folders = Folder.query.filter_by(user_id=current_user.id).order_by(Folder.name).all()
     if request.method == 'POST':
         player_name = request.form.get('player_name')
         sport = request.form.get('sport')
@@ -92,6 +99,7 @@ def add_card():
         buy_price = request.form.get('buy_price')
         sell_price = request.form.get('sell_price')
         notes = request.form.get('notes')
+        folder_id = request.form.get('folder_id')
 
         photo_filename = None
         if 'photo' in request.files:
@@ -124,6 +132,7 @@ def add_card():
             photo_filename=photo_filename,
             market_price=market_price,
             notes=notes,
+            folder_id=int(folder_id) if folder_id else None,
             user_id=current_user.id
         )
         db.session.add(new_card)
@@ -136,12 +145,13 @@ def add_card():
 
         return redirect(url_for('main.dashboard'))
 
-    return render_template('add_card.html')
+    return render_template('add_card.html', folders=folders)
 
 @main.route('/edit_card/<int:card_id>', methods=['GET', 'POST'])
 @login_required
 def edit_card(card_id):
     card = Card.query.get_or_404(card_id)
+    folders = Folder.query.filter_by(user_id=current_user.id).order_by(Folder.name).all()
     if card.user_id != current_user.id:
         flash('Permission denied.')
         return redirect(url_for('main.dashboard'))
@@ -156,6 +166,8 @@ def edit_card(card_id):
         sell_price = request.form.get('sell_price')
         card.sell_price = float(sell_price) if sell_price else None
         card.notes = request.form.get('notes')
+        folder_id = request.form.get('folder_id')
+        card.folder_id = int(folder_id) if folder_id else None
 
         if 'photo' in request.files:
             photo = request.files['photo']
@@ -172,7 +184,7 @@ def edit_card(card_id):
         flash('Card updated successfully.')
         return redirect(url_for('main.card_detail', card_id=card.id))
 
-    return render_template('edit_card.html', card=card)
+    return render_template('edit_card.html', card=card, folders=folders)
 
 @main.route('/card/<int:card_id>')
 @login_required
@@ -408,6 +420,7 @@ def delete_card(card_id):
     db.session.commit()
     flash('Card deleted.')
     return redirect(url_for('main.dashboard'))
+
 @main.route('/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
@@ -439,3 +452,52 @@ def change_password():
         return redirect(url_for('main.dashboard'))
 
     return render_template('change_password.html')
+
+# --- Folder routes ---
+
+@main.route('/create_folder', methods=['POST'])
+@login_required
+def create_folder():
+    name = request.form.get('name', '').strip()
+    if not name:
+        flash('Folder name cannot be empty.')
+        return redirect(url_for('main.dashboard'))
+    existing = Folder.query.filter_by(user_id=current_user.id, name=name).first()
+    if existing:
+        flash('A folder with that name already exists.')
+        return redirect(url_for('main.dashboard'))
+    folder = Folder(name=name, user_id=current_user.id)
+    db.session.add(folder)
+    db.session.commit()
+    flash(f'Folder "{name}" created.')
+    return redirect(url_for('main.dashboard'))
+
+@main.route('/delete_folder/<int:folder_id>')
+@login_required
+def delete_folder(folder_id):
+    folder = Folder.query.get_or_404(folder_id)
+    if folder.user_id != current_user.id:
+        flash('Permission denied.')
+        return redirect(url_for('main.dashboard'))
+    for card in folder.cards:
+        card.folder_id = None
+    db.session.delete(folder)
+    db.session.commit()
+    flash(f'Folder "{folder.name}" deleted. Cards have been moved back to your collection.')
+    return redirect(url_for('main.dashboard'))
+
+@main.route('/rename_folder/<int:folder_id>', methods=['POST'])
+@login_required
+def rename_folder(folder_id):
+    folder = Folder.query.get_or_404(folder_id)
+    if folder.user_id != current_user.id:
+        flash('Permission denied.')
+        return redirect(url_for('main.dashboard'))
+    new_name = request.form.get('name', '').strip()
+    if not new_name:
+        flash('Folder name cannot be empty.')
+        return redirect(url_for('main.dashboard'))
+    folder.name = new_name
+    db.session.commit()
+    flash(f'Folder renamed to "{new_name}".')
+    return redirect(url_for('main.dashboard'))

@@ -14,6 +14,13 @@ class User(UserMixin, db.Model):
     security_answer = db.Column(db.String(300))
     cards = db.relationship('Card', backref='owner', lazy=True)
     lots = db.relationship('Lot', backref='owner', lazy=True)
+    folders = db.relationship('Folder', backref='owner', lazy=True)
+
+class Folder(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    cards = db.relationship('Card', backref='folder', lazy=True)
 
 class Lot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -50,6 +57,7 @@ class Card(db.Model):
     date_added = db.Column(db.DateTime, default=db.func.current_timestamp())
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     lot_id = db.Column(db.Integer, db.ForeignKey('lot.id'), nullable=True)
+    folder_id = db.Column(db.Integer, db.ForeignKey('folder.id'), nullable=True)
     notes = db.Column(db.String(1000))
 
     @property
@@ -63,4 +71,3 @@ class Card(db.Model):
     @property
     def is_sold(self):
         return self.sell_price is not None or self.lot_id is not None
-    

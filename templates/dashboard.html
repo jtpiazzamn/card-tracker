@@ -4,6 +4,44 @@
     <meta charset="UTF-8">
     <title>Card Tracker - Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .folders-section { margin-bottom: 24px; }
+        .folders-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .folders-header h3 { color: #1a1a2e; font-size: 16px; margin: 0; }
+        .folder-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+        .folder-card {
+            display: flex; align-items: center; gap: 8px;
+            background: #fff; border: 2px solid #e0e0e0;
+            border-radius: 10px; padding: 10px 16px;
+            cursor: pointer; text-decoration: none;
+            color: #1a1a2e; font-size: 14px; font-weight: 600;
+            transition: all 0.2s;
+        }
+        .folder-card:hover { border-color: #e63946; background: #fff5f5; }
+        .folder-card.active { border-color: #e63946; background: #e63946; color: #fff; }
+        .folder-card .folder-count {
+            background: #f0f0f0; border-radius: 20px;
+            padding: 2px 8px; font-size: 12px; font-weight: 700; color: #666;
+        }
+        .folder-card.active .folder-count { background: rgba(255,255,255,0.3); color: #fff; }
+        .folder-actions { display: flex; gap: 6px; margin-left: 4px; }
+        .folder-action-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 13px; padding: 0 3px; opacity: 0.6;
+        }
+        .folder-action-btn:hover { opacity: 1; }
+        .new-folder-form { display: flex; gap: 8px; align-items: center; }
+        .new-folder-form input {
+            padding: 8px 12px; border: 1px solid #ddd;
+            border-radius: 8px; font-size: 14px; width: 180px;
+        }
+        .new-folder-form button {
+            padding: 8px 14px; background: #e63946;
+            color: white; border: none; border-radius: 8px;
+            cursor: pointer; font-size: 14px; font-weight: 600;
+        }
+        .new-folder-form button:hover { background: #c0303a; }
+    </style>
 </head>
 <body>
     <nav>
@@ -27,71 +65,113 @@
             {% endwith %}
 
             <div class="stats-banner">
-    <div class="stat-block">
-        <div class="stat-label">Total Cards</div>
-        <div class="stat-value">{{ cards|length }}</div>
-    </div>
-    <div class="stat-block">
-        <div class="stat-label">Total Invested</div>
-        <div class="stat-value">${{ "%.2f"|format(total_invested) }}</div>
-    </div>
-    <div class="stat-block">
-        <div class="stat-label">Est. Market Value</div>
-        <div class="stat-value">${{ "%.2f"|format(est_market_value) }}</div>
-    </div>
-    <div class="stat-block">
-        <div class="stat-label">Realized Gains</div>
-        <div class="stat-value {% if realized_gains >= 0 %}profit{% else %}loss{% endif %}">
-            {% if realized_gains >= 0 %}+{% endif %}${{ "%.2f"|format(realized_gains) }}
-        </div>
-    </div>
-    <div class="stat-block">
-        <div class="stat-label">Total Profit / Loss</div>
-        <div class="stat-value {% if total_profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-            {% if total_profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(total_profit_loss) }}
-        </div>
-    </div>
-</div>
+                <div class="stat-block">
+                    <div class="stat-label">Total Cards</div>
+                    <div class="stat-value">{{ cards|length }}</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">Total Invested</div>
+                    <div class="stat-value">${{ "%.2f"|format(total_invested) }}</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">Est. Market Value</div>
+                    <div class="stat-value">${{ "%.2f"|format(est_market_value) }}</div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">Realized Gains</div>
+                    <div class="stat-value {% if realized_gains >= 0 %}profit{% else %}loss{% endif %}">
+                        {% if realized_gains >= 0 %}+{% endif %}${{ "%.2f"|format(realized_gains) }}
+                    </div>
+                </div>
+                <div class="stat-block">
+                    <div class="stat-label">Total Profit / Loss</div>
+                    <div class="stat-value {% if total_profit_loss >= 0 %}profit{% else %}loss{% endif %}">
+                        {% if total_profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(total_profit_loss) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOLDERS SECTION -->
+            <div class="folders-section">
+                <div class="folders-header">
+                    <h3>📁 Folders</h3>
+                    <form method="POST" action="{{ url_for('main.create_folder') }}" class="new-folder-form">
+                        <input type="text" name="name" placeholder="New folder name..." maxlength="100">
+                        <button type="submit">+ Create</button>
+                    </form>
+                </div>
+                <div class="folder-grid">
+                    <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, folder='all') }}"
+                       class="folder-card {% if folder_filter == 'all' %}active{% endif %}">
+                        📂 All Cards
+                        <span class="folder-count">{{ Card.query.filter_by(user_id=current_user.id).count() if false else '' }}</span>
+                    </a>
+                    {% for folder in folders %}
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, folder=folder.id) }}"
+                           class="folder-card {% if folder_filter == folder.id|string %}active{% endif %}">
+                            📁 {{ folder.name }}
+                            <span class="folder-count">{{ folder.cards|length }}</span>
+                        </a>
+                        <div class="folder-actions">
+                            <form method="POST" action="{{ url_for('main.rename_folder', folder_id=folder.id) }}"
+                                  onsubmit="var n=prompt('Rename folder to:','{{ folder.name }}'); if(!n){return false;} this.querySelector('input').value=n;">
+                                <input type="hidden" name="name" value="">
+                                <button type="submit" class="folder-action-btn" title="Rename">✏️</button>
+                            </form>
+                            <a href="{{ url_for('main.delete_folder', folder_id=folder.id) }}"
+                               class="folder-action-btn" title="Delete folder"
+                               onclick="return confirm('Delete folder \'{{ folder.name }}\'? Cards will be moved back to your collection.')">🗑️</a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
 
             <div class="section-header">
                 <div class="section-title">
-                    My Collection <span>{{ cards|length }}</span>
+                    {% if folder_filter != 'all' %}
+                        {% for folder in folders %}{% if folder.id|string == folder_filter %}📁 {{ folder.name }}{% endif %}{% endfor %}
+                    {% else %}
+                        My Collection
+                    {% endif %}
+                    <span>{{ cards|length }}</span>
                 </div>
                 <div style="display:flex; gap:10px;">
-    <a href="{{ url_for('main.export_csv') }}" class="btn btn-export">📥 Export</a>
-    <a href="{{ url_for('main.import_cards') }}" class="btn" style="background:#0f3460;">📤 Import</a>
-    <a href="{{ url_for('main.add_card') }}" class="btn">+ Add Card</a>
-</div>
+                    <a href="{{ url_for('main.export_csv') }}" class="btn btn-export">📥 Export</a>
+                    <a href="{{ url_for('main.import_cards') }}" class="btn" style="background:#0f3460;">📤 Import</a>
+                    <a href="{{ url_for('main.add_card') }}" class="btn">+ Add Card</a>
+                </div>
             </div>
+
             <div class="filter-bar">
-    <div class="search-bar-wrapper">
-        <input type="text" id="cardSearch" placeholder="🔍  Search by player, sport, year, manufacturer..." onkeyup="filterCards()">
-    </div>
-    <div class="filter-controls">
-        <select onchange="applyFilter(this.value, '{{ sort_by }}')" class="filter-select">
-            <option value="all" {% if sport_filter == 'all' %}selected{% endif %}>All Sports</option>
-            <option value="Baseball" {% if sport_filter == 'Baseball' %}selected{% endif %}>⚾ Baseball</option>
-            <option value="Basketball" {% if sport_filter == 'Basketball' %}selected{% endif %}>🏀 Basketball</option>
-            <option value="Football" {% if sport_filter == 'Football' %}selected{% endif %}>🏈 Football</option>
-            <option value="Hockey" {% if sport_filter == 'Hockey' %}selected{% endif %}>🏒 Hockey</option>
-            <option value="Soccer" {% if sport_filter == 'Soccer' %}selected{% endif %}>⚽ Soccer</option>
-            <option value="Other" {% if sport_filter == 'Other' %}selected{% endif %}>Other</option>
-        </select>
-        <select onchange="applyFilter('{{ sport_filter }}', this.value)" class="filter-select">
-            <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Sort: Recent</option>
-            <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Sort: Name</option>
-            <option value="value_high" {% if sort_by == 'value_high' %}selected{% endif %}>Sort: Value High</option>
-            <option value="value_low" {% if sort_by == 'value_low' %}selected{% endif %}>Sort: Value Low</option>
-            <option value="profit_high" {% if sort_by == 'profit_high' %}selected{% endif %}>Sort: Profit High</option>
-            <option value="profit_low" {% if sort_by == 'profit_low' %}selected{% endif %}>Sort: Profit Low</option>
-        </select>
-        <select onchange="toggleSold(this.value)" class="filter-select">
-            <option value="hide">Hide Sold</option>
-            <option value="show">Show Sold</option>
-        </select>
-    </div>
-    </div>
-</div>
+                <div class="search-bar-wrapper">
+                    <input type="text" id="cardSearch" placeholder="🔍  Search by player, sport, year, manufacturer..." onkeyup="filterCards()">
+                </div>
+                <div class="filter-controls">
+                    <select onchange="applyFilter(this.value, '{{ sort_by }}', '{{ folder_filter }}')" class="filter-select">
+                        <option value="all" {% if sport_filter == 'all' %}selected{% endif %}>All Sports</option>
+                        <option value="Baseball" {% if sport_filter == 'Baseball' %}selected{% endif %}>⚾ Baseball</option>
+                        <option value="Basketball" {% if sport_filter == 'Basketball' %}selected{% endif %}>🏀 Basketball</option>
+                        <option value="Football" {% if sport_filter == 'Football' %}selected{% endif %}>🏈 Football</option>
+                        <option value="Hockey" {% if sport_filter == 'Hockey' %}selected{% endif %}>🏒 Hockey</option>
+                        <option value="Soccer" {% if sport_filter == 'Soccer' %}selected{% endif %}>⚽ Soccer</option>
+                        <option value="Other" {% if sport_filter == 'Other' %}selected{% endif %}>Other</option>
+                    </select>
+                    <select onchange="applyFilter('{{ sport_filter }}', this.value, '{{ folder_filter }}')" class="filter-select">
+                        <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Sort: Recent</option>
+                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Sort: Name</option>
+                        <option value="value_high" {% if sort_by == 'value_high' %}selected{% endif %}>Sort: Value High</option>
+                        <option value="value_low" {% if sort_by == 'value_low' %}selected{% endif %}>Sort: Value Low</option>
+                        <option value="profit_high" {% if sort_by == 'profit_high' %}selected{% endif %}>Sort: Profit High</option>
+                        <option value="profit_low" {% if sort_by == 'profit_low' %}selected{% endif %}>Sort: Profit Low</option>
+                    </select>
+                    <select onchange="toggleSold(this.value)" class="filter-select">
+                        <option value="hide">Hide Sold</option>
+                        <option value="show">Show Sold</option>
+                    </select>
+                </div>
+            </div>
 
             {% if cards %}
             <div id="no-results" style="display:none;" class="empty-state">
@@ -109,6 +189,9 @@
                         <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
                         <p>{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
                         <p>{{ card.condition }}</p>
+                        {% if card.folder %}
+                            <p style="font-size:12px; color:#888;">📁 {{ card.folder.name }}</p>
+                        {% endif %}
                         <div class="card-prices">
                             <span>Paid: ${{ "%.2f"|format(card.buy_price) }}</span>
                             {% if card.market_price %}
@@ -164,9 +247,9 @@ function filterCards() {
     }
 }
 
-function applyFilter(sport, sort) {
-    window.location.href = '/?sport=' + sport + '&sort=' + sort;
+function applyFilter(sport, sort, folder) {
+    window.location.href = '/?sport=' + sport + '&sort=' + sort + '&folder=' + folder;
 }
-</script>
+    </script>
 </body>
 </html>
