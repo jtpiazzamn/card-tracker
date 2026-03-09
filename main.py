@@ -21,9 +21,6 @@ def resize_image(filepath, max_size=(800, 800)):
 @main.route('/')
 @main.route('/dashboard')
 @login_required
-@main.route('/')
-@main.route('/dashboard')
-@login_required
 def dashboard():
     sport_filter = request.args.get('sport', 'all')
     sort_by = request.args.get('sort', 'date')
