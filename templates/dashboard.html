@@ -41,6 +41,43 @@
             cursor: pointer; font-size: 14px; font-weight: 600;
         }
         .new-folder-form button:hover { background: #c0303a; }
+
+        /* Bulk select toolbar */
+        .bulk-toolbar {
+            display: none; align-items: center; gap: 12px;
+            background: #1a1a2e; color: white;
+            padding: 12px 16px; border-radius: 10px;
+            margin-bottom: 16px; flex-wrap: wrap;
+        }
+        .bulk-toolbar.visible { display: flex; }
+        .bulk-toolbar label { font-size: 14px; font-weight: 600; }
+        .bulk-toolbar select {
+            padding: 7px 12px; border-radius: 8px;
+            border: none; font-size: 14px;
+        }
+        .bulk-toolbar button {
+            padding: 7px 16px; background: #e63946;
+            color: white; border: none; border-radius: 8px;
+            cursor: pointer; font-size: 14px; font-weight: 600;
+        }
+        .bulk-toolbar button:hover { background: #c0303a; }
+        .bulk-count { font-size: 14px; color: #aaa; }
+
+        /* Card checkboxes */
+        .card-item { position: relative; }
+        .card-checkbox {
+            position: absolute; top: 10px; left: 10px;
+            width: 20px; height: 20px; cursor: pointer;
+            accent-color: #e63946; z-index: 10;
+        }
+        .card-item.selected { outline: 3px solid #e63946; border-radius: 10px; }
+
+        /* Select all row */
+        .select-all-row {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 12px; font-size: 14px; color: #555; font-weight: 600;
+        }
+        .select-all-row input { width: 18px; height: 18px; accent-color: #e63946; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -104,7 +141,6 @@
                     <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, folder='all') }}"
                        class="folder-card {% if folder_filter == 'all' %}active{% endif %}">
                         📂 All Cards
-                        <span class="folder-count">{{ Card.query.filter_by(user_id=current_user.id).count() if false else '' }}</span>
                     </a>
                     {% for folder in folders %}
                     <div style="display:flex; align-items:center; gap:4px;">
@@ -174,44 +210,73 @@
             </div>
 
             {% if cards %}
-            <div id="no-results" style="display:none;" class="empty-state">
-                <p>No cards match your search.</p>
-            </div>
-            <div class="card-grid">
-                {% for card in cards %}
-                <div class="card-item">
-                    {% if card.photo_filename %}
-                        <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
-                    {% else %}
-                        <div class="no-photo">No Photo</div>
-                    {% endif %}
-                    <div class="card-info">
-                        <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
-                        <p>{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
-                        <p>{{ card.condition }}</p>
-                        {% if card.folder %}
-                            <p style="font-size:12px; color:#888;">📁 {{ card.folder.name }}</p>
+
+            <!-- BULK ASSIGN FORM -->
+            <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
+
+                <!-- Select All row -->
+                <div class="select-all-row">
+                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
+                    <label for="selectAll">Select All</label>
+                </div>
+
+                <!-- Bulk toolbar (shows when cards are selected) -->
+                <div class="bulk-toolbar" id="bulkToolbar">
+                    <label>Move <span id="selectedCount">0</span> selected cards to:</label>
+                    <select name="folder_id">
+                        <option value="">-- No Folder --</option>
+                        {% for folder in folders %}
+                            <option value="{{ folder.id }}">📁 {{ folder.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit">Apply</button>
+                    <span class="bulk-count" id="bulkCount"></span>
+                </div>
+
+                <div id="no-results" style="display:none;" class="empty-state">
+                    <p>No cards match your search.</p>
+                </div>
+
+                <div class="card-grid">
+                    {% for card in cards %}
+                    <div class="card-item" id="card-item-{{ card.id }}">
+                        <input type="checkbox" name="card_ids" value="{{ card.id }}"
+                               class="card-checkbox" onchange="updateBulkToolbar()">
+                        {% if card.photo_filename %}
+                            <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
+                        {% else %}
+                            <div class="no-photo">No Photo</div>
                         {% endif %}
-                        <div class="card-prices">
-                            <span>Paid: ${{ "%.2f"|format(card.buy_price) }}</span>
-                            {% if card.market_price %}
-                                <span>Mkt: ${{ "%.2f"|format(card.market_price) }}</span>
+                        <div class="card-info">
+                            <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
+                            <p>{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
+                            <p>{{ card.condition }}</p>
+                            {% if card.folder %}
+                                <p style="font-size:12px; color:#888;">📁 {{ card.folder.name }}</p>
                             {% endif %}
-                        </div>
-                        {% if card.profit_loss is not none %}
-                            <p class="{% if card.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
-                                {% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}
-                            </p>
-                        {% endif %}
-                        <div class="card-actions">
-                            <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn-search">🔍 Price</a>
-                            <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn-search">✏️ Edit</a>
-                            <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">🗑️</a>
+                            <div class="card-prices">
+                                <span>Paid: ${{ "%.2f"|format(card.buy_price) }}</span>
+                                {% if card.market_price %}
+                                    <span>Mkt: ${{ "%.2f"|format(card.market_price) }}</span>
+                                {% endif %}
+                            </div>
+                            {% if card.profit_loss is not none %}
+                                <p class="{% if card.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
+                                    {% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}
+                                </p>
+                            {% endif %}
+                            <div class="card-actions">
+                                <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn-search">🔍 Price</a>
+                                <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn-search">✏️ Edit</a>
+                                <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">🗑️</a>
+                            </div>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
+
+            </form>
+
             {% else %}
             <div class="empty-state">
                 <p>No cards in your collection yet.</p>
@@ -226,29 +291,48 @@ function filterCards() {
     const input = document.getElementById('cardSearch').value.toLowerCase().trim();
     const cards = document.querySelectorAll('.card-item');
     let visibleCount = 0;
-
     cards.forEach(card => {
-        const playerName = card.querySelector('.card-link') ? card.querySelector('.card-link').innerText.toLowerCase() : '';
-        const cardText = card.querySelector('.card-info').innerText.toLowerCase();
-
-        if (playerName.includes(input) || cardText.includes(input)) {
+        const text = card.innerText.toLowerCase();
+        if (text.includes(input)) {
             card.style.display = 'block';
             visibleCount++;
         } else {
             card.style.display = 'none';
         }
     });
-
-    const emptyMsg = document.getElementById('no-results');
-    if (visibleCount === 0 && input.length > 0) {
-        emptyMsg.style.display = 'block';
-    } else {
-        emptyMsg.style.display = 'none';
-    }
+    document.getElementById('no-results').style.display = (visibleCount === 0 && input.length > 0) ? 'block' : 'none';
 }
 
 function applyFilter(sport, sort, folder) {
     window.location.href = '/?sport=' + sport + '&sort=' + sort + '&folder=' + folder;
+}
+
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.card-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+        cb.closest('.card-item').classList.toggle('selected', checkbox.checked);
+    });
+    updateBulkToolbar();
+}
+
+function updateBulkToolbar() {
+    const checkboxes = document.querySelectorAll('.card-checkbox:checked');
+    const count = checkboxes.length;
+    const toolbar = document.getElementById('bulkToolbar');
+    const countEl = document.getElementById('selectedCount');
+
+    countEl.textContent = count;
+    toolbar.classList.toggle('visible', count > 0);
+
+    document.querySelectorAll('.card-checkbox').forEach(cb => {
+        cb.closest('.card-item').classList.toggle('selected', cb.checked);
+    });
+
+    // Sync select all checkbox
+    const all = document.querySelectorAll('.card-checkbox');
+    document.getElementById('selectAll').indeterminate = count > 0 && count < all.length;
+    document.getElementById('selectAll').checked = count === all.length && all.length > 0;
 }
     </script>
 </body>

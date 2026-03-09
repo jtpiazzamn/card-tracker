@@ -420,7 +420,32 @@ def delete_card(card_id):
     db.session.commit()
     flash('Card deleted.')
     return redirect(url_for('main.dashboard'))
+@main.route('/bulk_assign_folder', methods=['POST'])
+@login_required
+def bulk_assign_folder():
+    card_ids = request.form.getlist('card_ids')
+    folder_id = request.form.get('folder_id')
 
+    if not card_ids:
+        flash('No cards selected.')
+        return redirect(url_for('main.dashboard'))
+
+    folder_id = int(folder_id) if folder_id else None
+
+    for card_id in card_ids:
+        card = Card.query.get(int(card_id))
+        if card and card.user_id == current_user.id:
+            card.folder_id = folder_id
+
+    db.session.commit()
+
+    if folder_id:
+        folder = Folder.query.get(folder_id)
+        flash(f'Moved {len(card_ids)} cards to "{folder.name}".')
+    else:
+        flash(f'Removed {len(card_ids)} cards from their folder.')
+
+    return redirect(url_for('main.dashboard'))
 @main.route('/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
