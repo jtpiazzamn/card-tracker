@@ -8,9 +8,11 @@ from flask_limiter.util import get_remote_address
 
 load_dotenv()
 
+limiter = Limiter(get_remote_address, default_limits=["200 per day", "50 per hour"])
+
 def create_app():
     app = Flask(__name__)
-    limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
+    limiter.init_app(app)
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cards.db'
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
