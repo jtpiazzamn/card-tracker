@@ -3,6 +3,61 @@
 <head>
     <title>Card Tracker - Add Card</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .scan-section {
+            background: linear-gradient(135deg, #0f3460, #16213e);
+            border: 2px dashed #e94560;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .scan-section h3 {
+            color: #e94560;
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .scan-section p {
+            color: #a0a0b0;
+            font-size: 13px;
+            margin: 0 0 14px 0;
+        }
+        .btn-scan {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn-scan:hover { background: #c73652; }
+        .btn-scan:disabled { background: #555; cursor: not-allowed; }
+        #scan-status {
+            margin-top: 12px;
+            font-size: 13px;
+            color: #a0a0b0;
+            min-height: 20px;
+        }
+        #scan-status.success { color: #4caf50; }
+        #scan-status.error { color: #e94560; }
+        #scan-preview {
+            max-width: 180px;
+            max-height: 180px;
+            border-radius: 8px;
+            margin: 12px auto 0;
+            display: none;
+            border: 2px solid #e94560;
+        }
+        .autofilled {
+            border-color: #4caf50 !important;
+            background-color: rgba(76, 175, 80, 0.05) !important;
+        }
+    </style>
 </head>
 <body>
     <nav>
@@ -23,14 +78,27 @@
                     <div class="alert">{{ messages[0] }}</div>
                 {% endif %}
             {% endwith %}
-            <form method="POST" enctype="multipart/form-data">
+
+            <!-- AI Scan Section -->
+            <div class="scan-section">
+                <h3>🤖 AI Card Scanner</h3>
+                <p>Upload a photo of your card and AI will automatically fill in the details</p>
+                <input type="file" id="scan-input" accept="image/*" style="display:none">
+                <button type="button" class="btn-scan" id="scan-btn" onclick="document.getElementById('scan-input').click()">
+                    📷 Scan Card with AI
+                </button>
+                <img id="scan-preview" src="" alt="Card preview">
+                <div id="scan-status"></div>
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" id="card-form">
                 <div class="form-group">
                     <label>Player Name *</label>
-                    <input type="text" name="player_name" placeholder="e.g. Mickey Mantle" required>
+                    <input type="text" name="player_name" id="player_name" placeholder="e.g. Mickey Mantle" required>
                 </div>
                 <div class="form-group">
                     <label>Sport</label>
-                    <select name="sport">
+                    <select name="sport" id="sport">
                         <option value="">Select Sport</option>
                         <option value="Baseball">Baseball</option>
                         <option value="Basketball">Basketball</option>
@@ -42,15 +110,15 @@
                 </div>
                 <div class="form-group">
                     <label>Year</label>
-                    <input type="text" name="year" placeholder="e.g. 1952">
+                    <input type="text" name="year" id="year" placeholder="e.g. 1952">
                 </div>
                 <div class="form-group">
                     <label>Manufacturer</label>
-                    <input type="text" name="manufacturer" placeholder="e.g. Topps">
+                    <input type="text" name="manufacturer" id="manufacturer" placeholder="e.g. Topps">
                 </div>
                 <div class="form-group">
                     <label>Condition</label>
-                    <select name="condition">
+                    <select name="condition" id="condition">
                         <option value="">Select Condition</option>
                         <option value="Poor">Poor</option>
                         <option value="Fair">Fair</option>
@@ -83,11 +151,11 @@
                 </div>
                 <div class="form-group">
                     <label>Notes</label>
-                    <textarea name="notes" placeholder="e.g. Purchased at card show, signed copy, PSA graded..." rows="3" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-family:inherit; font-size:14px; resize:vertical;"></textarea>
+                    <textarea name="notes" id="notes" placeholder="e.g. Purchased at card show, signed copy, PSA graded..." rows="3" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-family:inherit; font-size:14px; resize:vertical;"></textarea>
                 </div>
                 <div class="form-group">
                     <label>Card Photo</label>
-                    <input type="file" name="photo" accept="image/*">
+                    <input type="file" name="photo" id="photo" accept="image/*">
                 </div>
                 <div class="form-buttons">
                     <a href="{{ url_for('main.dashboard') }}" class="btn-cancel">Cancel</a>
@@ -96,5 +164,122 @@
             </form>
         </div>
     </div>
+
+    <script>
+        const scanInput = document.getElementById('scan-input');
+        const scanBtn = document.getElementById('scan-btn');
+        const scanStatus = document.getElementById('scan-status');
+        const scanPreview = document.getElementById('scan-preview');
+
+        scanInput.addEventListener('change', async function() {
+            const file = this.files[0];
+            if (!file) return;
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = e => {
+                scanPreview.src = e.target.result;
+                scanPreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // Also copy to the photo field
+            const photoField = document.getElementById('photo');
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            photoField.files = dt.files;
+
+            // Send to Claude API
+            scanBtn.disabled = true;
+            scanBtn.textContent = '🔍 Scanning...';
+            scanStatus.className = '';
+            scanStatus.textContent = 'Analyzing your card with AI...';
+
+            try {
+                const base64 = await fileToBase64(file);
+                const result = await scanCardWithAI(base64, file.type);
+                fillForm(result);
+                scanStatus.className = 'success';
+                scanStatus.textContent = '✅ Card identified! Please review and confirm the details below.';
+            } catch (err) {
+                scanStatus.className = 'error';
+                scanStatus.textContent = '❌ Could not identify card. Please fill in details manually.';
+                console.error(err);
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.textContent = '📷 Scan Card with AI';
+            }
+        });
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function scanCardWithAI(base64, mediaType) {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 1000,
+                    messages: [{
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'image',
+                                source: { type: 'base64', media_type: mediaType, data: base64 }
+                            },
+                            {
+                                type: 'text',
+                                text: `Analyze this sports card image and extract the following information. Respond ONLY with a valid JSON object, no markdown, no extra text.
+
+{
+  "player_name": "full player name or empty string if not found",
+  "sport": "one of: Baseball, Basketball, Football, Hockey, Soccer, Other, or empty string",
+  "year": "4 digit year or empty string if not found",
+  "manufacturer": "card manufacturer/brand like Topps, Panini, Upper Deck, Bowman, Fleer, Donruss, Score, etc. or empty string",
+  "notes": "any other useful details like card set name, card number, rookie card, special edition, etc. or empty string"
+}`
+                            }
+                        ]
+                    }]
+                })
+            });
+
+            if (!response.ok) throw new Error('API request failed');
+            const data = await response.json();
+            const text = data.content[0].text.trim();
+            return JSON.parse(text);
+        }
+
+        function fillForm(data) {
+            const fields = ['player_name', 'year', 'manufacturer', 'notes'];
+            fields.forEach(field => {
+                if (data[field]) {
+                    const el = document.getElementById(field);
+                    if (el) {
+                        el.value = data[field];
+                        el.classList.add('autofilled');
+                    }
+                }
+            });
+
+            // Handle sport dropdown
+            if (data.sport) {
+                const sportEl = document.getElementById('sport');
+                const options = Array.from(sportEl.options);
+                const match = options.find(o => o.value.toLowerCase() === data.sport.toLowerCase());
+                if (match) {
+                    sportEl.value = match.value;
+                    sportEl.classList.add('autofilled');
+                }
+            }
+        }
+    </script>
 </body>
 </html>
