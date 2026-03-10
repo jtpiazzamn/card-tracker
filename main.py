@@ -5,6 +5,8 @@ from werkzeug.utils import secure_filename
 from models import db, Card, Lot, Folder
 from search import search_card_price
 from PIL import Image
+import anthropic
+import base64
 
 main = Blueprint('main', __name__)
 
@@ -532,4 +534,51 @@ def rename_folder(folder_id):
     folder.name = new_name
     db.session.commit()
     flash(f'Folder renamed to "{new_name}".')
+    @main.route('/scan_card', methods=['POST'])
+@login_required
+def scan_card():
+    from flask import jsonify
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image provided'}), 400
+
+    image = request.files['image']
+    image_data = base64.b64encode(image.read()).decode('utf-8')
+    media_type = image.content_type
+
+    try:
+        client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+        message = client.messages.create(
+            model='claude-opus-4-5',
+            max_tokens=1000,
+            messages=[{
+                'role': 'user',
+                'content': [
+                    {
+                        'type': 'image',
+                        'source': {
+                            'type': 'base64',
+                            'media_type': media_type,
+                            'data': image_data
+                        }
+                    },
+                    {
+                        'type': 'text',
+                        'text': '''Analyze this sports card image and extract the following information. Respond ONLY with a valid JSON object, no markdown, no extra text.
+
+{
+  "player_name": "full player name or empty string if not found",
+  "sport": "one of: Baseball, Basketball, Football, Hockey, Soccer, Other, or empty string",
+  "year": "4 digit year or empty string if not found",
+  "manufacturer": "card manufacturer/brand like Topps, Panini, Upper Deck, Bowman, Fleer, Donruss, Score, etc. or empty string",
+  "notes": "any other useful details like card set name, card number, rookie card, special edition, etc. or empty string"
+}'''
+                    }
+                ]
+            }]
+        )
+        import json
+        result = json.loads(message.content[0].text.strip())
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
     return redirect(url_for('main.dashboard'))
