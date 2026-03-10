@@ -3,11 +3,14 @@ from flask_login import LoginManager
 from models import db, User
 from dotenv import load_dotenv
 import os
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 
 def create_app():
     app = Flask(__name__)
+    limiter = Limiter(get_remote_address, app=app, default_limits=["200 per day", "50 per hour"])
     app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cards.db'
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
