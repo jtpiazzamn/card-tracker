@@ -429,6 +429,7 @@ def delete_card(card_id):
     db.session.commit()
     flash('Card deleted.')
     return redirect(url_for('main.dashboard'))
+
 @main.route('/bulk_assign_folder', methods=['POST'])
 @login_required
 def bulk_assign_folder():
@@ -455,6 +456,7 @@ def bulk_assign_folder():
         flash(f'Removed {len(card_ids)} cards from their folder.')
 
     return redirect(url_for('main.dashboard'))
+
 @main.route('/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
@@ -534,10 +536,13 @@ def rename_folder(folder_id):
     folder.name = new_name
     db.session.commit()
     flash(f'Folder renamed to "{new_name}".')
-    @main.route('/scan_card', methods=['POST'])
+    return redirect(url_for('main.dashboard'))
+
+@main.route('/scan_card', methods=['POST'])
 @login_required
 def scan_card():
     from flask import jsonify
+    import json
     if 'image' not in request.files:
         return jsonify({'error': 'No image provided'}), 400
 
@@ -576,9 +581,7 @@ def scan_card():
                 ]
             }]
         )
-        import json
         result = json.loads(message.content[0].text.strip())
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    return redirect(url_for('main.dashboard'))
