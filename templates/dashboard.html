@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Card Tracker - Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .folders-section { margin-bottom: 24px; }
         .folders-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
@@ -43,8 +43,6 @@
             cursor: pointer; font-size: 14px; font-weight: 600;
         }
         .new-folder-form button:hover { background: #c0303a; }
-
-        /* View toggle */
         .view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
         .view-btn {
             padding: 8px 18px; border-radius: 8px; border: 2px solid #e0e0e0;
@@ -53,8 +51,6 @@
         }
         .view-btn:hover { border-color: #e63946; }
         .view-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
-
-        /* Folder view tiles */
         .folder-view-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
         .folder-view-tile {
             background: #fff; border: 2px solid #e0e0e0; border-radius: 12px;
@@ -65,8 +61,6 @@
         .folder-view-tile .folder-icon { font-size: 32px; margin-bottom: 8px; }
         .folder-view-tile .folder-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
         .folder-view-tile .folder-card-count { font-size: 12px; color: #888; }
-
-        /* Bulk select toolbar */
         .bulk-toolbar {
             display: none; align-items: center; gap: 12px;
             background: #1a1a2e; color: white;
@@ -75,18 +69,13 @@
         }
         .bulk-toolbar.visible { display: flex; }
         .bulk-toolbar label { font-size: 14px; font-weight: 600; }
-        .bulk-toolbar select {
-            padding: 7px 12px; border-radius: 8px;
-            border: none; font-size: 14px;
-        }
+        .bulk-toolbar select { padding: 7px 12px; border-radius: 8px; border: none; font-size: 14px; }
         .bulk-toolbar button {
             padding: 7px 16px; background: #e63946;
             color: white; border: none; border-radius: 8px;
             cursor: pointer; font-size: 14px; font-weight: 600;
         }
         .bulk-toolbar button:hover { background: #c0303a; }
-
-        /* Card checkboxes */
         .card-item { position: relative; }
         .card-checkbox {
             position: absolute; top: 10px; left: 10px;
@@ -94,16 +83,45 @@
             accent-color: #e63946; z-index: 10;
         }
         .card-item.selected { outline: 3px solid #e63946; border-radius: 10px; }
-
         .select-all-row {
             display: flex; align-items: center; gap: 8px;
             margin-bottom: 12px; font-size: 14px; color: #555; font-weight: 600;
         }
         .select-all-row input { width: 18px; height: 18px; accent-color: #e63946; cursor: pointer; }
-
         .unassigned-label {
             font-size: 15px; font-weight: 700; color: #888;
             margin: 24px 0 12px; letter-spacing: 0.5px;
+        }
+
+        /* Portfolio Charts */
+        .portfolio-charts {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            border: 1px solid #eee;
+        }
+        .chart-card h4 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #1a1a2e;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #e94560;
+        }
+        @media (max-width: 900px) {
+            .portfolio-charts { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 600px) {
+            .portfolio-charts { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -156,6 +174,24 @@
                     </div>
                 </div>
             </div>
+
+            <!-- PORTFOLIO CHARTS -->
+            {% if chart_sport_labels %}
+            <div class="portfolio-charts">
+                <div class="chart-card">
+                    <h4>📊 Cards by Sport</h4>
+                    <canvas id="sportPieChart" height="200"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h4>💰 Invested vs Value</h4>
+                    <canvas id="investedChart" height="200"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h4>📈 Profit / Loss by Sport</h4>
+                    <canvas id="plChart" height="200"></canvas>
+                </div>
+            </div>
+            {% endif %}
 
             <!-- FOLDERS MANAGEMENT BAR -->
             <div class="folders-section">
@@ -444,19 +480,79 @@
 
         </div>
     </div>
+
     <script>
+// Portfolio Charts
+{% if chart_sport_labels %}
+const sportLabels = {{ chart_sport_labels | tojson }};
+const sportCounts = {{ chart_sport_counts | tojson }};
+const sportInvested = {{ chart_sport_invested | tojson }};
+const sportValue = {{ chart_sport_value | tojson }};
+const sportPL = sportValue.map((v, i) => Math.round((v - sportInvested[i]) * 100) / 100);
+const chartColors = ['#e94560','#0f3460','#27ae60','#f39c12','#9b59b6','#1abc9c','#e67e22'];
+
+// Cards by Sport Pie
+new Chart(document.getElementById('sportPieChart'), {
+    type: 'doughnut',
+    data: {
+        labels: sportLabels,
+        datasets: [{ data: sportCounts, backgroundColor: chartColors, borderWidth: 2 }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }
+    }
+});
+
+// Invested vs Value Bar
+new Chart(document.getElementById('investedChart'), {
+    type: 'bar',
+    data: {
+        labels: sportLabels,
+        datasets: [
+            { label: 'Invested', data: sportInvested, backgroundColor: 'rgba(15,52,96,0.8)', borderRadius: 4 },
+            { label: 'Value', data: sportValue, backgroundColor: 'rgba(233,69,96,0.8)', borderRadius: 4 }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } },
+            tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.y.toFixed(2) } }
+        },
+        scales: { y: { ticks: { callback: v => '$' + v } } }
+    }
+});
+
+// Profit/Loss by Sport
+new Chart(document.getElementById('plChart'), {
+    type: 'bar',
+    data: {
+        labels: sportLabels,
+        datasets: [{
+            label: 'Profit / Loss',
+            data: sportPL,
+            backgroundColor: sportPL.map(v => v >= 0 ? 'rgba(46,204,113,0.8)' : 'rgba(233,69,96,0.8)'),
+            borderRadius: 4
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { display: false },
+            tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.y.toFixed(2) } }
+        },
+        scales: { y: { ticks: { callback: v => '$' + v } } }
+    }
+});
+{% endif %}
+
 function filterCards() {
     const input = document.getElementById('cardSearch').value.toLowerCase().trim();
     const cards = document.querySelectorAll('.card-item');
     let visibleCount = 0;
     cards.forEach(card => {
         const text = card.innerText.toLowerCase();
-        if (text.includes(input)) {
-            card.style.display = 'block';
-            visibleCount++;
-        } else {
-            card.style.display = 'none';
-        }
+        if (text.includes(input)) { card.style.display = 'block'; visibleCount++; }
+        else { card.style.display = 'none'; }
     });
     const noResults = document.getElementById('no-results');
     if (noResults) noResults.style.display = (visibleCount === 0 && input.length > 0) ? 'block' : 'none';

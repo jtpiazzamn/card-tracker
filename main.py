@@ -91,6 +91,20 @@ def dashboard():
         user_id=current_user.id, folder_id=None
     ).order_by(Card.date_added.desc()).all()
 
+
+    from collections import defaultdict
+    sport_counts = defaultdict(int)
+    sport_invested = defaultdict(float)
+    sport_value = defaultdict(float)
+    for card in all_cards:
+        sport = card.sport or "Unknown"
+        sport_counts[sport] += 1
+        sport_invested[sport] += card.buy_price
+        sport_value[sport] += card.sell_price if card.sell_price else (card.market_price or card.buy_price)
+    chart_sport_labels = list(sport_counts.keys())
+    chart_sport_counts = [sport_counts[s] for s in chart_sport_labels]
+    chart_sport_invested = [round(sport_invested[s], 2) for s in chart_sport_labels]
+    chart_sport_value = [round(sport_value[s], 2) for s in chart_sport_labels]
     return render_template('dashboard.html',
         cards=cards,
         total_invested=total_invested,
@@ -104,7 +118,11 @@ def dashboard():
         folders=folders,
         folder_filter=folder_filter,
         view_mode=view_mode,
-        unassigned_cards=unassigned_cards
+        unassigned_cards=unassigned_cards,
+        chart_sport_labels=chart_sport_labels,
+        chart_sport_counts=chart_sport_counts,
+        chart_sport_invested=chart_sport_invested,
+        chart_sport_value=chart_sport_value
     )
 
 @main.route('/add_card', methods=['GET', 'POST'])
