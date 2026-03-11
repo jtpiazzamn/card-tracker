@@ -751,3 +751,71 @@ def delete_watchlist(item_id):
     db.session.commit()
     flash('Removed from watchlist.')
     return redirect(url_for('main.watchlist'))
+
+@main.route('/research', methods=['GET', 'POST'])
+@login_required
+def research():
+    from flask import jsonify
+    from search import search_ebay_sold
+    import json
+
+    player_name = None
+    sport = None
+    ebay_data = None
+    error = None
+    ai_analysis = None
+    recommendation = None
+
+    if request.method == 'POST':
+        player_name = request.form.get('player_name', '').strip()
+        sport = request.form.get('sport', '').strip() or None
+
+        # Get eBay data
+        ebay_data, error = search_ebay_sold(player_name, sport=sport)
+
+        if ebay_data:
+            # Build prompt for Claude
+            listings_text = "\n".join([
+                f"- {l['title']}: ${l['price']:.2f}"
+                for l in ebay_data['listings']
+            ])
+
+            prompt = f"""You are a sports card market analyst. Based on the following recent eBay listing data for {player_name} cards, provide a brief investment analysis.
+
+eBay Data:
+- Average Price: ${ebay_data['average']:.2f}
+- Low: ${ebay_data['low']:.2f}
+- High: ${ebay_data['high']:.2f}
+- Number of Listings: {ebay_data['count']}
+
+Recent Listings:
+{listings_text}
+
+Provide:
+1. A one-word recommendation: BUY, SELL, HOLD, or WATCH
+2. A 3-4 sentence analysis covering price range, market activity, and whether this player's cards represent good value right now.
+
+Format your response as JSON like this:
+{{"recommendation": "BUY", "analysis": "Your analysis here."}}"""
+
+            try:
+                client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
+                message = client.messages.create(
+                    model='claude-opus-4-5',
+                    max_tokens=300,
+                    messages=[{'role': 'user', 'content': prompt}]
+                )
+                result = json.loads(message.content[0].text.strip())
+                recommendation = result.get('recommendation', '')
+                ai_analysis = result.get('analysis', '')
+            except Exception as e:
+                ai_analysis = f"AI analysis unavailable: {str(e)}"
+
+    return render_template('research.html',
+        player_name=player_name,
+        sport=sport,
+        ebay_data=ebay_data,
+        error=error,
+        ai_analysis=ai_analysis,
+        recommendation=recommendation
+    )
