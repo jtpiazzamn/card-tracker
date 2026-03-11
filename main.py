@@ -1,4 +1,5 @@
 import os
+import uuid
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
@@ -125,7 +126,7 @@ def add_card():
         if 'photo' in request.files:
             photo = request.files['photo']
             if photo and allowed_file(photo.filename):
-                filename = secure_filename(photo.filename)
+                filename = str(uuid.uuid4()) + '_' + secure_filename(photo.filename)
                 upload_folder = 'static/uploads'
                 os.makedirs(upload_folder, exist_ok=True)
                 filepath = os.path.join(upload_folder, filename)
@@ -195,7 +196,7 @@ def edit_card(card_id):
         if 'photo' in request.files:
             photo = request.files['photo']
             if photo and allowed_file(photo.filename):
-                filename = secure_filename(photo.filename)
+                filename = str(uuid.uuid4()) + '_' + secure_filename(photo.filename)
                 upload_folder = 'static/uploads'
                 os.makedirs(upload_folder, exist_ok=True)
                 filepath = os.path.join(upload_folder, filename)
