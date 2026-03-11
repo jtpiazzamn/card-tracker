@@ -17,6 +17,17 @@ def allowed_file(filename):
 
 def resize_image(filepath, max_size=(800, 800)):
     img = Image.open(filepath)
+    try:
+        exif = img._getexif()
+        if exif:
+            orientation_key = 274
+            if orientation_key in exif:
+                orientation = exif[orientation_key]
+                rotations = {3: 180, 6: 270, 8: 90}
+                if orientation in rotations:
+                    img = img.rotate(rotations[orientation], expand=True)
+    except Exception:
+        pass
     img.thumbnail(max_size, Image.LANCZOS)
     img.save(filepath, optimize=True, quality=85)
 
