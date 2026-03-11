@@ -3,6 +3,7 @@
 <head>
     <title>Card Tracker - {{ card.player_name }}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <nav>
@@ -94,6 +95,84 @@
                 </div>
             </div>
         </div>
+
+        {% if price_history %}
+        <div style="margin-top:30px; background:#1a1a2e; border-radius:12px; padding:25px; border:1px solid #e94560;">
+            <h3 style="color:#e94560; margin:0 0 20px 0; font-size:16px; letter-spacing:1px;">📈 PRICE HISTORY</h3>
+            <canvas id="priceChart" height="100"></canvas>
+        </div>
+
+        <script>
+            const labels = [
+                {% for h in price_history %}
+                    "{{ h.date_recorded.strftime('%b %d, %Y') }}"{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ];
+            const prices = [
+                {% for h in price_history %}
+                    {{ h.price }}{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ];
+            const buyPrice = {{ card.buy_price }};
+
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Market Price',
+                            data: prices,
+                            borderColor: '#e94560',
+                            backgroundColor: 'rgba(233, 69, 96, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#e94560',
+                            pointRadius: 5,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Buy Price',
+                            data: labels.map(() => buyPrice),
+                            borderColor: '#aaaaaa',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#cccccc' }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => '$' + ctx.parsed.y.toFixed(2)
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#cccccc' },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        },
+                        y: {
+                            ticks: {
+                                color: '#cccccc',
+                                callback: val => '$' + val.toFixed(2)
+                            },
+                            grid: { color: 'rgba(255,255,255,0.05)' }
+                        }
+                    }
+                }
+            });
+        </script>
+        {% endif %}
+
     </div>
 </body>
 </html>
