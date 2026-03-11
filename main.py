@@ -2,7 +2,7 @@ import os
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, Card, Lot, Folder
+from models import db, Card, Lot, Folder, PriceHistory
 from search import search_card_price
 from PIL import Image
 import anthropic
@@ -159,6 +159,9 @@ def add_card():
         db.session.commit()
 
         if market_price:
+            history = PriceHistory(card_id=new_card.id, price=market_price)
+            db.session.add(history)
+            db.session.commit()
             flash(f'Card added! Market price found: ${market_price:.2f}')
         else:
             flash('Card added! No market price found automatically.')
@@ -213,7 +216,8 @@ def card_detail(card_id):
     if card.user_id != current_user.id:
         flash('Permission denied.')
         return redirect(url_for('main.dashboard'))
-    return render_template('card_detail.html', card=card)
+    price_history = PriceHistory.query.filter_by(card_id=card_id).order_by(PriceHistory.date_recorded).all()
+    return render_template('card_detail.html', card=card, price_history=price_history)
 
 @main.route('/search_price/<int:card_id>')
 @login_required
@@ -229,6 +233,9 @@ def search_price(card_id):
 
     if price:
         card.market_price = price
+        db.session.commit()
+        history = PriceHistory(card_id=card.id, price=price)
+        db.session.add(history)
         db.session.commit()
         flash(f'Market price updated to ${price:.2f}')
     else:
