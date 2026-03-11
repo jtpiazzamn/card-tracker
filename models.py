@@ -72,9 +72,10 @@ class Card(db.Model):
     def is_sold(self):
         return self.sell_price is not None or self.lot_id is not None
     
-    class PriceHistory(db.Model):
-       id = db.Column(db.Integer, primary_key=True)
-       card_id = db.Column(db.Integer, db.ForeignKey('card.id'), nullable=False)
-       price = db.Column(db.Float, nullable=False)
-       date_recorded = db.Column(db.DateTime, default=db.func.current_timestamp())
-       card = db.relationship('Card', backref='price_history')
+class PriceHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    card_id = db.Column(db.Integer, db.ForeignKey('card.id'), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    date_recorded = db.Column(db.DateTime, default=db.func.current_timestamp())
+    card = db.relationship('Card', backref='price_history')
+    
