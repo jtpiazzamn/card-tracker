@@ -1,6 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-
 db = SQLAlchemy()
 
 class User(UserMixin, db.Model):
@@ -15,6 +14,7 @@ class User(UserMixin, db.Model):
     cards = db.relationship('Card', backref='owner', lazy=True)
     lots = db.relationship('Lot', backref='owner', lazy=True)
     folders = db.relationship('Folder', backref='owner', lazy=True)
+    watchlist = db.relationship('Watchlist', backref='owner', lazy=True)
 
 class Folder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -71,11 +71,20 @@ class Card(db.Model):
     @property
     def is_sold(self):
         return self.sell_price is not None or self.lot_id is not None
-    
+
 class PriceHistory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     card_id = db.Column(db.Integer, db.ForeignKey('card.id'), nullable=False)
     price = db.Column(db.Float, nullable=False)
     date_recorded = db.Column(db.DateTime, default=db.func.current_timestamp())
     card = db.relationship('Card', backref='price_history')
-    
+
+class Watchlist(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    player_name = db.Column(db.String(150), nullable=False)
+    sport = db.Column(db.String(50))
+    target_price = db.Column(db.Float)
+    priority = db.Column(db.String(20), default='medium')
+    notes = db.Column(db.String(500))
+    date_added = db.Column(db.DateTime, default=db.func.current_timestamp())
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

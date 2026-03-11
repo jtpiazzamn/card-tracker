@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CardLedger - Watchlist</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .watchlist-wrapper { background: #f0f2f5; min-height: calc(100vh - 65px); padding: 30px 0; }
+        .watchlist-container { max-width: 900px; margin: 0 auto; padding: 0 25px; }
+        .watchlist-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .watchlist-table th { background: #1a1a2e; color: white; padding: 14px 16px; text-align: left; font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
+        .watchlist-table td { padding: 14px 16px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+        .watchlist-table tr:last-child td { border-bottom: none; }
+        .watchlist-table tr:hover td { background: #f8f9fa; }
+        .add-form { background: white; border-radius: 12px; padding: 25px; margin-bottom: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+        .add-form h3 { font-family: 'Oswald', sans-serif; font-size: 18px; color: #1a1a2e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 2px solid #e94560; }
+        .add-form-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
+        .add-form-grid input, .add-form-grid select { padding: 10px 12px; border: 2px solid #eee; border-radius: 6px; font-size: 14px; font-family: 'Open Sans', sans-serif; width: 100%; }
+        .add-form-grid input:focus, .add-form-grid select:focus { outline: none; border-color: #e94560; }
+        .add-form label { display: block; font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+        .priority-high { color: #e94560; font-weight: 700; }
+        .priority-medium { color: #f39c12; font-weight: 700; }
+        .priority-low { color: #27ae60; font-weight: 700; }
+        .empty-watchlist { text-align: center; padding: 60px; color: #999; }
+        .empty-watchlist p { font-size: 16px; margin-bottom: 8px; }
+        @media (max-width: 768px) {
+            .add-form-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 480px) {
+            .add-form-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <h1>Card<span>Ledger</span></h1>
+        <div class="nav-right">
+            <span>Welcome, {{ current_user.username }}</span>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('main.dashboard') }}" style="background:#0f3460;">Dashboard</a>
+            <a href="{{ url_for('main.analytics') }}" style="background:#0f3460;">Analytics</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        </div>
+    </nav>
+
+    <div class="watchlist-wrapper">
+        <div class="watchlist-container">
+            <div style="margin-bottom:24px;">
+                <h2 style="font-family:'Oswald',sans-serif; font-size:28px; color:#1a1a2e; text-transform:uppercase; letter-spacing:1px;">👁 Watchlist</h2>
+                <p style="color:#888; font-size:14px; margin-top:4px;">Cards you want to buy — track target prices and priority</p>
+            </div>
+
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert">{{ messages[0] }}</div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Add Form -->
+            <div class="add-form">
+                <h3>➕ Add to Watchlist</h3>
+                <form method="POST" action="{{ url_for('main.add_watchlist') }}">
+                    <div class="add-form-grid">
+                        <div>
+                            <label>Player Name *</label>
+                            <input type="text" name="player_name" placeholder="e.g. Patrick Mahomes" required>
+                        </div>
+                        <div>
+                            <label>Sport</label>
+                            <select name="sport">
+                                <option value="">Any</option>
+                                <option>Baseball</option>
+                                <option>Basketball</option>
+                                <option>Football</option>
+                                <option>Hockey</option>
+                                <option>Soccer</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Target Price ($)</label>
+                            <input type="number" name="target_price" step="0.01" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label>Priority</label>
+                            <select name="priority">
+                                <option value="medium">Medium</option>
+                                <option value="high">High</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn">Add</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <label>Notes</label>
+                        <input type="text" name="notes" placeholder="e.g. Rookie card, PSA 10 preferred" style="width:100%; padding:10px 12px; border:2px solid #eee; border-radius:6px; font-size:14px; font-family:'Open Sans',sans-serif;">
+                    </div>
+                </form>
+            </div>
+
+            <!-- Watchlist Table -->
+            {% if items %}
+            <table class="watchlist-table">
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>Sport</th>
+                        <th>Target Price</th>
+                        <th>Priority</th>
+                        <th>Notes</th>
+                        <th>Added</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><strong>{{ item.player_name }}</strong></td>
+                        <td>{{ item.sport or '—' }}</td>
+                        <td>{% if item.target_price %}${{ "{:,.2f}".format(item.target_price) }}{% else %}—{% endif %}</td>
+                        <td>
+                            <span class="priority-{{ item.priority }}">
+                                {% if item.priority == 'high' %}🔴 High
+                                {% elif item.priority == 'medium' %}🟡 Medium
+                                {% else %}🟢 Low{% endif %}
+                            </span>
+                        </td>
+                        <td style="color:#888;">{{ item.notes or '—' }}</td>
+                        <td style="color:#aaa; font-size:12px;">{{ item.date_added.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <a href="{{ url_for('main.delete_watchlist', item_id=item.id) }}"
+                               onclick="return confirm('Remove from watchlist?')"
+                               class="btn-delete" style="font-size:12px;">Remove</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-watchlist">
+                <p>👁 Your watchlist is empty</p>
+                <p style="font-size:14px;">Add cards you want to buy above</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

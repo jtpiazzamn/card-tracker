@@ -604,3 +604,127 @@ def scan_card():
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@main.route('/analytics')
+@login_required
+def analytics():
+    from collections import defaultdict
+    all_cards = Card.query.filter_by(user_id=current_user.id).all()
+
+    total_cards = len(all_cards)
+    total_invested = sum(c.buy_price for c in all_cards)
+    cards_sold = sum(1 for c in all_cards if c.sell_price)
+
+    realized_gains = sum(
+        c.sell_price - c.buy_price for c in all_cards if c.sell_price
+    )
+    unrealized = sum(
+        (c.market_price or c.buy_price) - c.buy_price
+        for c in all_cards if not c.sell_price
+    )
+    est_market_value = sum(
+        c.market_price or c.buy_price for c in all_cards if not c.sell_price
+    )
+
+    total_value = sum(
+        c.sell_price if c.sell_price else (c.market_price or c.buy_price)
+        for c in all_cards
+    )
+    roi = ((total_value - total_invested) / total_invested * 100) if total_invested > 0 else 0
+
+    # Top gainers / losers (cards with profit_loss data)
+    cards_with_pl = [c for c in all_cards if c.profit_loss is not None]
+    sorted_by_pl = sorted(cards_with_pl, key=lambda c: c.profit_loss, reverse=True)
+    top_gainers = [c for c in sorted_by_pl if c.profit_loss > 0][:5]
+    top_losers = sorted([c for c in sorted_by_pl if c.profit_loss < 0], key=lambda c: c.profit_loss)[:5]
+
+    # Profit by sport
+    sport_data = defaultdict(float)
+    sport_counts = defaultdict(int)
+    for c in all_cards:
+        sport = c.sport or 'Unknown'
+        sport_counts[sport] += 1
+        if c.profit_loss is not None:
+            sport_data[sport] += c.profit_loss
+
+    sport_labels = list(sport_data.keys())
+    sport_profits = [round(sport_data[s], 2) for s in sport_labels]
+
+    # Breakdown by sport (count)
+    breakdown_labels = list(sport_counts.keys())
+    breakdown_counts = [sport_counts[s] for s in breakdown_labels]
+
+    # ROI by sport
+    sport_invested = defaultdict(float)
+    sport_value = defaultdict(float)
+    for c in all_cards:
+        sport = c.sport or 'Unknown'
+        sport_invested[sport] += c.buy_price
+        sport_value[sport] += c.sell_price if c.sell_price else (c.market_price or c.buy_price)
+
+    roi_labels = list(sport_invested.keys())
+    roi_values = [
+        round((sport_value[s] - sport_invested[s]) / sport_invested[s] * 100, 1)
+        if sport_invested[s] > 0 else 0
+        for s in roi_labels
+    ]
+
+    return render_template('analytics.html',
+        total_cards=total_cards,
+        total_invested=total_invested,
+        est_market_value=est_market_value,
+        realized_gains=realized_gains,
+        unrealized=unrealized,
+        cards_sold=cards_sold,
+        roi=roi,
+        top_gainers=top_gainers,
+        top_losers=top_losers,
+        sport_labels=sport_labels,
+        sport_profits=sport_profits,
+        breakdown_labels=breakdown_labels,
+        breakdown_counts=breakdown_counts,
+        roi_labels=roi_labels,
+        roi_values=roi_values
+    )
+
+@main.route('/watchlist')
+@login_required
+def watchlist():
+    from models import Watchlist
+    items = Watchlist.query.filter_by(user_id=current_user.id).order_by(Watchlist.date_added.desc()).all()
+    return render_template('watchlist.html', items=items)
+
+@main.route('/watchlist/add', methods=['POST'])
+@login_required
+def add_watchlist():
+    from models import Watchlist
+    player_name = request.form.get('player_name', '').strip()
+    if not player_name:
+        flash('Player name is required.')
+        return redirect(url_for('main.watchlist'))
+
+    item = Watchlist(
+        player_name=player_name,
+        sport=request.form.get('sport') or None,
+        target_price=float(request.form.get('target_price')) if request.form.get('target_price') else None,
+        priority=request.form.get('priority', 'medium'),
+        notes=request.form.get('notes', '').strip() or None,
+        user_id=current_user.id
+    )
+    db.session.add(item)
+    db.session.commit()
+    flash(f'{player_name} added to watchlist.')
+    return redirect(url_for('main.watchlist'))
+
+@main.route('/watchlist/delete/<int:item_id>')
+@login_required
+def delete_watchlist(item_id):
+    from models import Watchlist
+    item = Watchlist.query.get_or_404(item_id)
+    if item.user_id != current_user.id:
+        flash('Permission denied.')
+        return redirect(url_for('main.watchlist'))
+    db.session.delete(item)
+    db.session.commit()
+    flash('Removed from watchlist.')
+    return redirect(url_for('main.watchlist'))
