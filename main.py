@@ -213,12 +213,17 @@ def edit_card(card_id):
 @main.route('/card/<int:card_id>')
 @login_required
 def card_detail(card_id):
+    from search import search_ebay_sold
     card = Card.query.get_or_404(card_id)
     if card.user_id != current_user.id:
         flash('Permission denied.')
         return redirect(url_for('main.dashboard'))
     price_history = PriceHistory.query.filter_by(card_id=card_id).order_by(PriceHistory.date_recorded).all()
-    return render_template('card_detail.html', card=card, price_history=price_history)
+    ebay_data, ebay_error = search_ebay_sold(
+        card.player_name, card.year, card.manufacturer, card.sport, card.condition
+    )
+    return render_template('card_detail.html', card=card, price_history=price_history,
+                           ebay_data=ebay_data, ebay_error=ebay_error)
 
 @main.route('/search_price/<int:card_id>')
 @login_required
