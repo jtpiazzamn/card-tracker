@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .analytics-wrapper { background: #f0f2f5; min-height: calc(100vh - 65px); padding: 30px 0; }
-        .analytics-container { max-width: 1200px; margin: 0 auto; padding: 0 25px; }
+        .analytics-wrapper { background: #f0f2f5; min-height: calc(100vh - 65px); padding: 30px 0; overflow-x: hidden; }
+        .analytics-container { max-width: 1200px; margin: 0 auto; padding: 0 25px; width: 100%; box-sizing: border-box; }
         .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
         .analytics-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #eee; }
         .analytics-card h3 { font-family: 'Oswald', sans-serif; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: #1a1a2e; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e94560; }
