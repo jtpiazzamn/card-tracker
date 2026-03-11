@@ -20,6 +20,9 @@ def create_app():
     app.config['SESSION_COOKIE_SECURE'] = True
     app.config['SESSION_COOKIE_HTTPONLY'] = True
     app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    app.config['SESSION_PERMANENT'] = False
+    app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
+    app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
     db.init_app(app)
 

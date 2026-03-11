@@ -590,5 +590,28 @@ function updateBulkToolbar() {
     }
 }
     </script>
+<script>
+let inactivityTime = 0;
+const warningTime = 25 * 60; // 25 minutes
+const logoutTime = 30 * 60;  // 30 minutes
+let warned = false;
+
+const timer = setInterval(() => {
+    inactivityTime++;
+    if (inactivityTime >= logoutTime) {
+        window.location.href = "{{ url_for('auth.logout') }}";
+    } else if (inactivityTime >= warningTime && !warned) {
+        warned = true;
+        alert('You will be logged out in 5 minutes due to inactivity.');
+    }
+}, 1000);
+
+['mousemove','keypress','click','scroll','touchstart'].forEach(event => {
+    document.addEventListener(event, () => {
+        inactivityTime = 0;
+        warned = false;
+    });
+});
+</script>   
 </body>
 </html>
