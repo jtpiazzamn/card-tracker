@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^\\$env:SECRET_KEY='secret-key-test'; \\$env:FLASK_DEBUG='1'; cd 'c:\\\\Users\\\\JimPiazza\\\\OneDrive\\\\card-tracker'; & 'c:\\\\Users\\\\JimPiazza\\\\OneDrive\\\\card-tracker\\\\venv\\\\Scripts\\\\python\\.exe' app\\.py$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
