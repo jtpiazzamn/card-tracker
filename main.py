@@ -467,6 +467,7 @@ def delete_card(card_id):
     if card.user_id != current_user.id:
         flash('Permission denied.')
         return redirect(url_for('main.dashboard'))
+    PriceHistory.query.filter_by(card_id=card.id).delete()
     db.session.delete(card)
     db.session.commit()
     flash('Card deleted.')
