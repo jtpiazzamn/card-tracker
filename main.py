@@ -128,6 +128,9 @@ def dashboard():
 @main.route('/add_card', methods=['GET', 'POST'])
 @login_required
 def add_card():
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     folders = Folder.query.filter_by(user_id=current_user.id).order_by(Folder.name).all()
     if request.method == 'POST':
         player_name = request.form.get('player_name')
