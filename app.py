@@ -6,14 +6,30 @@ import os
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+# Flask 3 removed `Markup` from `flask`. Some dependencies (e.g. Flask-WTF) still import it.
+# Provide a runtime shim so those imports continue to work.
+try:
+    import flask as _flask
+    from markupsafe import Markup
+    _flask.Markup = Markup
+except Exception:
+    pass
+
+from flask_wtf import CSRFProtect
+
 load_dotenv()
 
 limiter = Limiter(get_remote_address, default_limits=["200 per day", "50 per hour"])
+csrf = CSRFProtect()
 
 def create_app():
     app = Flask(__name__)
     limiter.init_app(app)
-    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
+    secret_key = os.getenv('SECRET_KEY')
+    if not secret_key:
+        raise RuntimeError('SECRET_KEY environment variable is required for security. Set it in your environment or in a .env file.')
+    app.config['SECRET_KEY'] = secret_key
+
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cards.db'
     app.config['UPLOAD_FOLDER'] = 'static/uploads'
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
@@ -29,6 +45,8 @@ def create_app():
     login_manager = LoginManager()
     login_manager.login_view = 'auth.login'
     login_manager.init_app(app)
+
+    csrf.init_app(app)
 
     @login_manager.user_loader
     def load_user(user_id):
@@ -50,4 +68,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    debug = os.getenv('FLASK_DEBUG', '0').lower() in ('1', 'true', 'yes')
+    app.run(debug=debug)

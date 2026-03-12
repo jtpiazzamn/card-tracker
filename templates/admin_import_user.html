@@ -29,6 +29,7 @@
             </div>
             <div style="background:white; padding:30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-top:20px;">
                 <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label>Select User</label>
                         <select name="user_id" required class="filter-select" style="width:100%; padding:10px;">

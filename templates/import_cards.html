@@ -45,6 +45,7 @@
             <p style="color:#999; font-size:12px; margin-bottom:25px;">* Required fields</p>
 
             <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label>Select CSV or Excel File</label>
                     <input type="file" name="file" accept=".csv,.xlsx" required>

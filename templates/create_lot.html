@@ -32,6 +32,7 @@
 
             <div style="background:white; padding:30px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-top:20px;">
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label>Lot Name</label>
                         <input type="text" name="name" placeholder="e.g. Baseball Commons Lot" required>

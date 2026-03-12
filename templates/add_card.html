@@ -94,6 +94,7 @@
             </div>
 
             <form method="POST" enctype="multipart/form-data" id="card-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="form-group">
                     <label>Player Name *</label>
                     <input type="text" name="player_name" id="player_name" placeholder="e.g. Mickey Mantle" required>
@@ -213,11 +214,15 @@
         });
 
         async function scanCardWithAI(file) {
+            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
             const formData = new FormData();
             formData.append('image', file);
 
             const response = await fetch('/scan_card', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken
+                },
                 body: formData
             });
 

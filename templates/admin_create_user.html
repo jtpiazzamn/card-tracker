@@ -29,6 +29,7 @@
             </div>
             <div style="background:white; padding:40px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.08); margin-top:20px; max-width:620px;">
                 <form method="POST" autocomplete="off">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label>Username</label>
                         <input type="text" name="username" required placeholder="e.g. johndoe" autocomplete="off">

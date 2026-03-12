@@ -63,6 +63,7 @@
             <div class="add-form">
                 <h3>➕ Add to Watchlist</h3>
                 <form method="POST" action="{{ url_for('main.add_watchlist') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="add-form-grid">
                         <div>
                             <label>Player Name *</label>
