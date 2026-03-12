@@ -128,6 +128,9 @@ def dashboard():
 @main.route('/add_card', methods=['GET', 'POST'])
 @login_required
 def add_card():
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     folders = Folder.query.filter_by(user_id=current_user.id).order_by(Folder.name).all()
     if request.method == 'POST':
         player_name = request.form.get('player_name')
@@ -192,6 +195,9 @@ def add_card():
 @main.route('/edit_card/<int:card_id>', methods=['GET', 'POST'])
 @login_required
 def edit_card(card_id):
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     card = Card.query.get_or_404(card_id)
     folders = Folder.query.filter_by(user_id=current_user.id).order_by(Folder.name).all()
     if card.user_id != current_user.id:
@@ -405,6 +411,9 @@ def lots():
 @main.route('/create_lot', methods=['GET', 'POST'])
 @login_required
 def create_lot():
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     if request.method == 'POST':
         name = request.form.get('name')
         total_sale_price = float(request.form.get('total_sale_price'))
@@ -446,6 +455,9 @@ def create_lot():
 @main.route('/delete_lot/<int:lot_id>')
 @login_required
 def delete_lot(lot_id):
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     lot = Lot.query.get_or_404(lot_id)
     if lot.user_id != current_user.id:
         flash('Permission denied.')
@@ -463,10 +475,14 @@ def delete_lot(lot_id):
 @main.route('/delete_card/<int:card_id>')
 @login_required
 def delete_card(card_id):
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     card = Card.query.get_or_404(card_id)
     if card.user_id != current_user.id:
         flash('Permission denied.')
         return redirect(url_for('main.dashboard'))
+    PriceHistory.query.filter_by(card_id=card.id).delete()
     db.session.delete(card)
     db.session.commit()
     flash('Card deleted.')
@@ -536,6 +552,9 @@ def change_password():
 @main.route('/create_folder', methods=['POST'])
 @login_required
 def create_folder():
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     name = request.form.get('name', '').strip()
     if not name:
         flash('Folder name cannot be empty.')
@@ -553,6 +572,9 @@ def create_folder():
 @main.route('/delete_folder/<int:folder_id>')
 @login_required
 def delete_folder(folder_id):
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     folder = Folder.query.get_or_404(folder_id)
     if folder.user_id != current_user.id:
         flash('Permission denied.')
@@ -567,6 +589,9 @@ def delete_folder(folder_id):
 @main.route('/rename_folder/<int:folder_id>', methods=['POST'])
 @login_required
 def rename_folder(folder_id):
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     folder = Folder.query.get_or_404(folder_id)
     if folder.user_id != current_user.id:
         flash('Permission denied.')
@@ -720,6 +745,9 @@ def watchlist():
 @main.route('/watchlist/add', methods=['POST'])
 @login_required
 def add_watchlist():
+    if current_user.is_demo:
+        flash('Demo account cannot make changes.')
+        return redirect(url_for('main.dashboard'))
     from models import Watchlist
     player_name = request.form.get('player_name', '').strip()
     if not player_name:
