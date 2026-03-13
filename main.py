@@ -904,8 +904,12 @@ def card_advice(card_id):
             max_tokens=400,
             messages=[{'role': 'user', 'content': prompt}]
         )
-
-        result = json.loads(message.content[0].text.strip())
+        
+        # Debug: log the raw response
+        raw_response = message.content[0].text.strip()
+        print(f"DEBUG: Claude raw response: '{raw_response}'")
+        
+        result = json.loads(raw_response)
         recommendation = result.get('recommendation', 'HOLD')
         analysis = result.get('analysis', '')
 
