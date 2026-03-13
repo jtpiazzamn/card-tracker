@@ -37,12 +37,14 @@ def build_ai_prompt(card, ebay_data):
     """Build a prompt for Claude to analyze card's investment potential."""
     listings_text = "\n".join([
         f"- {l['title']}: ${l['price']:.2f} ({l.get('condition', 'Unknown')})"
-        for l in ebay_data.get('listings', [])[:5]  # Include first 5 listings
+        for l in ebay_data.get('listings', [])[:5]
     ])
-    
+
     profit = card.profit_loss if hasattr(card, 'profit_loss') else (card.sell_price - card.buy_price if card.sell_price else None)
     profit_text = f"${profit:.2f}" if profit is not None else "Not sold yet"
-    
+    market_price_text = f"${card.market_price:.2f}" if card.market_price else "Unknown"
+    sell_price_text = f"${card.sell_price:.2f}" if card.sell_price else "Not set"
+
     prompt = f"""You are a sports card market analyst. Analyze this specific card in the user's collection and provide a KEEP vs SELL recommendation.
 
 CARD DETAILS:
@@ -52,8 +54,8 @@ CARD DETAILS:
 - Manufacturer: {card.manufacturer}
 - Condition: {card.condition}
 - Buy Price: ${card.buy_price:.2f}
-- Current Market Price: ${card.market_price:.2f if card.market_price else 'Unknown'}
-- Current Sell Price: ${card.sell_price:.2f if card.sell_price else 'Not set'}
+- Current Market Price: {market_price_text}
+- Current Sell Price: {sell_price_text}
 - Profit/Loss: {profit_text}
 
 EBAY MARKET DATA (Recent Sold Listings):
@@ -71,7 +73,7 @@ Based on the card's acquisition cost, current market conditions, and recent sale
 
 Format as JSON:
 {{"recommendation": "KEEP/SELL/HOLD", "analysis": "Your analysis here"}}"""
-    
+
     return prompt
 
 @main.route('/')
@@ -133,7 +135,6 @@ def dashboard():
         user_id=current_user.id, folder_id=None
     ).order_by(Card.date_added.desc()).all()
 
-
     from collections import defaultdict
     sport_counts = defaultdict(int)
     sport_invested = defaultdict(float)
@@ -147,6 +148,7 @@ def dashboard():
     chart_sport_counts = [sport_counts[s] for s in chart_sport_labels]
     chart_sport_invested = [round(sport_invested[s], 2) for s in chart_sport_labels]
     chart_sport_value = [round(sport_value[s], 2) for s in chart_sport_labels]
+
     return render_template('dashboard.html',
         cards=cards,
         total_invested=total_invested,
@@ -279,7 +281,6 @@ def edit_card(card_id):
 @main.route('/card/<int:card_id>')
 @login_required
 def card_detail(card_id):
-    from search import search_ebay_sold
     card = Card.query.get_or_404(card_id)
     if card.user_id != current_user.id:
         flash('Permission denied.')
@@ -650,8 +651,6 @@ def rename_folder(folder_id):
 @main.route('/scan_card', methods=['POST'])
 @login_required
 def scan_card():
-    from flask import jsonify
-    import json
     if 'image' not in request.files:
         return jsonify({'error': 'No image provided'}), 400
 
@@ -722,13 +721,11 @@ def analytics():
     )
     roi = ((total_value - total_invested) / total_invested * 100) if total_invested > 0 else 0
 
-    # Top gainers / losers (cards with profit_loss data)
     cards_with_pl = [c for c in all_cards if c.profit_loss is not None]
     sorted_by_pl = sorted(cards_with_pl, key=lambda c: c.profit_loss, reverse=True)
     top_gainers = [c for c in sorted_by_pl if c.profit_loss > 0][:5]
     top_losers = sorted([c for c in sorted_by_pl if c.profit_loss < 0], key=lambda c: c.profit_loss)[:5]
 
-    # Profit by sport
     sport_data = defaultdict(float)
     sport_counts = defaultdict(int)
     for c in all_cards:
@@ -740,11 +737,9 @@ def analytics():
     sport_labels = list(sport_data.keys())
     sport_profits = [round(sport_data[s], 2) for s in sport_labels]
 
-    # Breakdown by sport (count)
     breakdown_labels = list(sport_counts.keys())
     breakdown_counts = [sport_counts[s] for s in breakdown_labels]
 
-    # ROI by sport
     sport_invested = defaultdict(float)
     sport_value = defaultdict(float)
     for c in all_cards:
@@ -825,10 +820,6 @@ def delete_watchlist(item_id):
 @main.route('/research', methods=['GET', 'POST'])
 @login_required
 def research():
-    from flask import jsonify
-    from search import search_ebay_sold
-    import json
-
     player_name = None
     sport = None
     ebay_data = None
@@ -840,11 +831,9 @@ def research():
         player_name = request.form.get('player_name', '').strip()
         sport = request.form.get('sport', '').strip() or None
 
-        # Get eBay data
         ebay_data, error = search_ebay_sold(player_name, sport=sport)
 
         if ebay_data:
-            # Build prompt for Claude
             listings_text = "\n".join([
                 f"- {l['title']}: ${l['price']:.2f}"
                 for l in ebay_data['listings']
@@ -895,43 +884,38 @@ Format your response as JSON like this:
 def card_advice(card_id):
     """Get AI advice on whether to KEEP, SELL, or HOLD a specific card."""
     card = Card.query.get_or_404(card_id)
-    
-    # Authorization check: ensure user owns this card
+
     if card.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
-    
+
     try:
-        # Get eBay data for this card's player
         ebay_data, error = search_ebay_sold(card.player_name, sport=card.sport)
-        
+
         if not ebay_data:
             return jsonify({
                 'error': f'Could not fetch market data: {error or "Unknown error"}'
             }), 400
-        
-        # Build prompt using the helper function
+
         prompt = build_ai_prompt(card, ebay_data)
-        
-        # Call Claude for analysis
+
         client = anthropic.Anthropic(api_key=os.getenv('ANTHROPIC_API_KEY'))
         message = client.messages.create(
             model='claude-opus-4-5',
             max_tokens=400,
             messages=[{'role': 'user', 'content': prompt}]
         )
-        
-        # Parse the response
+
         result = json.loads(message.content[0].text.strip())
         recommendation = result.get('recommendation', 'HOLD')
         analysis = result.get('analysis', '')
-        
+
         return jsonify({
             'recommendation': recommendation,
             'analysis': analysis,
             'ebay_average': ebay_data['average'],
             'ebay_count': ebay_data['count']
         })
-    
+
     except json.JSONDecodeError as e:
         return jsonify({'error': f'Failed to parse AI response: {str(e)}'}), 500
     except Exception as e:
