@@ -906,7 +906,6 @@ def card_advice(card_id):
         )
 
         raw = message.content[0].text.strip() if message.content else ''
-        print('RAW AI RESPONSE:', repr(raw))
 
         if not raw:
             return jsonify({'error': 'AI returned empty response'}), 500
