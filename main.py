@@ -904,12 +904,20 @@ def card_advice(card_id):
             max_tokens=400,
             messages=[{'role': 'user', 'content': prompt}]
         )
-        
-        # Debug: log the raw response
-        raw_response = message.content[0].text.strip()
-        print(f"DEBUG: Claude raw response: '{raw_response}'")
-        
-        result = json.loads(raw_response)
+
+        raw = message.content[0].text.strip() if message.content else ''
+        print('RAW AI RESPONSE:', repr(raw))
+
+        if not raw:
+            return jsonify({'error': 'AI returned empty response'}), 500
+
+        if '```' in raw:
+            raw = raw.split('```')[1]
+            if raw.startswith('json'):
+                raw = raw[4:]
+        raw = raw.strip()
+
+        result = json.loads(raw)
         recommendation = result.get('recommendation', 'HOLD')
         analysis = result.get('analysis', '')
 
