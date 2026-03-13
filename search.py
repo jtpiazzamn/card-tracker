@@ -96,13 +96,24 @@ def search_ebay_sold(player_name, year=None, manufacturer=None, sport=None, cond
     if not app_id:
         return None, "No eBay App ID found"
 
+    # allow sandbox credentials by switching endpoint automatically
+    # if the App ID contains "SBX" assume sandbox credentials
+    use_sandbox = 'SBX' in app_id.upper()
+    
+    # helper to choose base url
+    if use_sandbox:
+        token_url = "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
+        search_base = "https://api.sandbox.ebay.com"
+    else:
+        token_url = "https://api.ebay.com/identity/v1/oauth2/token"
+        search_base = "https://api.ebay.com"
+
     # Build search query
     parts = [p for p in [year, manufacturer, player_name, sport, 'card'] if p]
     query = ' '.join(parts)
 
     try:
         # Get OAuth token using Client Credentials flow
-        token_url = "https://api.ebay.com/identity/v1/oauth2/token"
         token_resp = requests.post(
             token_url,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -119,7 +130,7 @@ def search_ebay_sold(player_name, year=None, manufacturer=None, sport=None, cond
         access_token = token_resp.json().get('access_token')
 
         # Search completed/sold listings
-        search_url = "https://api.ebay.com/buy/browse/v1/item_summary/search"
+        search_url = f"{search_base}/buy/browse/v1/item_summary/search"
         headers = {
             "Authorization": f"Bearer {access_token}",
             "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
