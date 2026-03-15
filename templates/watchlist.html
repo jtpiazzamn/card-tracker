@@ -22,6 +22,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
         <h3 class="text-sm font-semibold text-gray-700 mb-4">Add to Watchlist</h3>
         <form method="POST" action="{{ url_for('main.add_watchlist') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                 <div class="lg:col-span-2">
                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">

@@ -1,10 +1,12 @@
 import os
 import uuid
+from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
-from models import db, Card, Lot, Folder, PriceHistory
+from models import db, Card, Lot, Folder, PriceHistory, PortfolioHistory
 from search import search_card_price, search_ebay_sold
+from ebay_service import get_ebay_market_price
 from PIL import Image
 import anthropic
 import base64
@@ -13,6 +15,15 @@ import json
 main = Blueprint('main', __name__)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+
+def record_portfolio_snapshot(user_id):
+    """Sum current market value of all unsold cards and save a portfolio snapshot."""
+    cards = Card.query.filter_by(user_id=user_id).filter(Card.sell_price.is_(None)).all()
+    total = round(sum(c.market_price or c.buy_price for c in cards), 2)
+    snapshot = PortfolioHistory(user_id=user_id, total_market_value=total)
+    db.session.add(snapshot)
+    db.session.commit()
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -200,12 +211,12 @@ def add_card():
                 photo_filename = filename
 
         market_price = None
+        market_price_updated_at = None
         if player_name:
-            price, error = search_card_price(
-                player_name, year, manufacturer, sport, condition
-            )
+            price, _ = get_ebay_market_price(player_name, sport, year)
             if price:
                 market_price = price
+                market_price_updated_at = datetime.utcnow()
 
         new_card = Card(
             player_name=player_name,
@@ -217,6 +228,7 @@ def add_card():
             sell_price=float(sell_price) if sell_price else None,
             photo_filename=photo_filename,
             market_price=market_price,
+            market_price_updated_at=market_price_updated_at,
             notes=notes,
             folder_id=int(folder_id) if folder_id else None,
             user_id=current_user.id
@@ -289,6 +301,15 @@ def card_detail(card_id):
     ebay_data, ebay_error = search_ebay_sold(
         card.player_name, card.year, card.manufacturer, card.sport, card.condition
     )
+    # Auto-save market price from live eBay data so the stat card always reflects current value
+    if ebay_data and ebay_data.get('average'):
+        card.market_price = ebay_data['average']
+        card.market_price_updated_at = datetime.utcnow()
+        db.session.commit()
+        try:
+            record_portfolio_snapshot(card.user_id)
+        except Exception:
+            pass  # Non-critical — don't break page load if snapshot fails
     return render_template('card_detail.html', card=card, price_history=price_history,
                            ebay_data=ebay_data, ebay_error=ebay_error)
 
@@ -310,11 +331,64 @@ def search_price(card_id):
         history = PriceHistory(card_id=card.id, price=price)
         db.session.add(history)
         db.session.commit()
+        try:
+            record_portfolio_snapshot(current_user.id)
+        except Exception:
+            pass
         flash(f'Market price updated to ${price:.2f}')
     else:
         flash('Could not find market price. Try again later.')
 
     return redirect(url_for('main.dashboard'))
+
+@main.route('/refresh_price/<int:card_id>')
+@login_required
+def refresh_price(card_id):
+    card = Card.query.get_or_404(card_id)
+    if card.user_id != current_user.id:
+        flash('Permission denied.')
+        return redirect(url_for('main.dashboard'))
+
+    price, error = get_ebay_market_price(card.player_name, card.sport, card.year)
+
+    if price:
+        card.market_price = price
+        card.market_price_updated_at = datetime.utcnow()
+        db.session.commit()
+        history = PriceHistory(card_id=card.id, price=price)
+        db.session.add(history)
+        db.session.commit()
+        try:
+            record_portfolio_snapshot(current_user.id)
+        except Exception:
+            pass
+        flash(f'Market price refreshed to ${price:.2f}')
+    else:
+        flash(f'Could not refresh price at this time, please try again later')
+
+    return redirect(url_for('main.card_detail', card_id=card_id))
+
+
+@main.route('/api/portfolio-history')
+@login_required
+def portfolio_history_api():
+    """Return daily portfolio value snapshots for the current user as JSON."""
+    from collections import OrderedDict
+    from datetime import timedelta
+    cutoff = datetime.utcnow() - timedelta(days=365)
+    snapshots = PortfolioHistory.query.filter(
+        PortfolioHistory.user_id == current_user.id,
+        PortfolioHistory.recorded_at >= cutoff
+    ).order_by(PortfolioHistory.recorded_at).all()
+
+    # Deduplicate: keep the last snapshot recorded each calendar day
+    daily = OrderedDict()
+    for snap in snapshots:
+        day_key = snap.recorded_at.strftime('%Y-%m-%d')
+        daily[day_key] = snap.total_market_value
+
+    return jsonify([{'date': k, 'value': v} for k, v in daily.items()])
+
 
 @main.route('/export_csv')
 @login_required

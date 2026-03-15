@@ -55,6 +55,7 @@ class Card(db.Model):
     sell_price = db.Column(db.Float)
     photo_filename = db.Column(db.String(300))
     market_price = db.Column(db.Float)
+    market_price_updated_at = db.Column(db.DateTime, nullable=True)
     date_added = db.Column(db.DateTime, default=db.func.current_timestamp())
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     lot_id = db.Column(db.Integer, db.ForeignKey('lot.id'), nullable=True)
@@ -79,6 +80,13 @@ class PriceHistory(db.Model):
     price = db.Column(db.Float, nullable=False)
     date_recorded = db.Column(db.DateTime, default=db.func.current_timestamp())
     card = db.relationship('Card', backref='price_history')
+
+class PortfolioHistory(db.Model):
+    """Daily snapshot of a user's total portfolio market value."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    total_market_value = db.Column(db.Float, nullable=False)
+    recorded_at = db.Column(db.DateTime, default=db.func.current_timestamp())
 
 class Watchlist(db.Model):
     id = db.Column(db.Integer, primary_key=True)

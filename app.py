@@ -63,6 +63,15 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        # Migrate: add market_price_updated_at column to existing card tables
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(db.text(
+                    'ALTER TABLE card ADD COLUMN market_price_updated_at DATETIME'
+                ))
+                conn.commit()
+        except Exception:
+            pass  # Column already exists — safe to ignore
 
     return app
 

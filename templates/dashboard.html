@@ -94,6 +94,7 @@
         <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-semibold text-gray-700">Folders</h3>
             <form method="POST" action="{{ url_for('main.create_folder') }}" class="flex gap-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="text" name="name" placeholder="New folder name..." maxlength="100"
                        class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-44 focus:outline-none focus:ring-2 focus:ring-indigo-300">
                 <button type="submit"
@@ -112,7 +113,8 @@
                 </span>
                 <div class="flex gap-0.5">
                     <form method="POST" action="{{ url_for('main.rename_folder', folder_id=folder.id) }}"
-                          onsubmit="var n=prompt('Rename folder to:','{{ folder.name }}'); if(!n){return false;} this.querySelector('input').value=n;">
+                          onsubmit="var n=prompt('Rename folder to:','{{ folder.name }}'); if(!n){return false;} this.querySelector('[name=name]').value=n;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="name" value="">
                         <button type="submit" class="text-gray-400 hover:text-gray-600 p-1 text-xs" title="Rename">✏️</button>
                     </form>
@@ -221,6 +223,7 @@
             Unassigned Cards ({{ unassigned_cards|length }})
         </div>
         <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="flex items-center gap-2 mb-3 text-sm text-gray-500">
                 <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
                        class="w-4 h-4 accent-indigo-600 cursor-pointer">
@@ -293,6 +296,7 @@
             ← Back to Folders
         </a>
         <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="flex items-center gap-2 mb-3 text-sm text-gray-500">
                 <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
                        class="w-4 h-4 accent-indigo-600 cursor-pointer">
@@ -365,6 +369,7 @@
     {% else %}
         {% if cards %}
         <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="flex items-center gap-2 mb-3 text-sm text-gray-500">
                 <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
                        class="w-4 h-4 accent-indigo-600 cursor-pointer">
@@ -507,67 +512,60 @@ new Chart(document.getElementById('plChart'), {
 });
 {% endif %}
 
-// TODO: replace with real historical data
-(function () {
-    // Fixed placeholder range: $500 → $2,400 over 365 days.
-    // Uses a seeded LCG so the curve is identical on every page load.
-    const DAYS = 365, START = 500, END = 2400;
+(async function () {
+    const DAY_FMT   = { month: 'short', day: 'numeric' };
+    const MONTH_FMT = { month: 'short', year: '2-digit' };
+    const currentValue = {{ est_market_value | round(2) }};
 
-    function seededRand(seed) {
-        let s = seed >>> 0;
-        return function () {
-            s = Math.imul(s, 1664525) + 1013904223 >>> 0;
-            return s / 0x100000000;
-        };
-    }
-    const rand = seededRand(7);
-
-    // Build master daily values with upward drift + bounded random walk
-    const masterValues = [];
-    let val = START;
-    const drift = (END - START) / DAYS;
-    for (let i = 0; i < DAYS; i++) {
-        val = Math.max(START * 0.85, val + drift + (rand() - 0.46) * val * 0.016);
-        masterValues.push(Math.round(val * 100) / 100);
-    }
-    masterValues[DAYS - 1] = END;
-
-    // Build master date labels (Date objects, one per day going back 365 days)
-    const today = new Date();
-    const masterDates = Array.from({ length: DAYS }, (_, i) => {
-        const d = new Date(today);
-        d.setDate(today.getDate() - (DAYS - 1 - i));
-        return d;
-    });
-
-    // Slice master data by period, sampling every `step` points for readability
-    function buildPeriod(daysBack, step, fmt) {
-        const start = Math.max(0, DAYS - daysBack);
-        const vals  = masterValues.slice(start);
-        const dates = masterDates.slice(start);
-        const data = [], labels = [];
-        for (let i = 0; i < vals.length; i += step) {
-            data.push(vals[i]);
-            labels.push(dates[i].toLocaleDateString('en-US', fmt));
+    // Fetch real portfolio history from the API
+    let allDates = [], allValues = [];
+    try {
+        const resp = await fetch('/api/portfolio-history');
+        if (resp.ok) {
+            const raw = await resp.json();
+            // Parse dates at noon UTC to avoid timezone off-by-one issues
+            allDates  = raw.map(r => new Date(r.date + 'T12:00:00'));
+            allValues = raw.map(r => r.value);
         }
-        // Always ensure the last real point is included
-        if (data[data.length - 1] !== vals[vals.length - 1]) {
-            data.push(vals[vals.length - 1]);
-            labels.push(dates[dates.length - 1].toLocaleDateString('en-US', fmt));
+    } catch (_) {}
+
+    // Fall back to current portfolio value as a single point when no history exists
+    if (allDates.length === 0) {
+        allDates  = [new Date()];
+        allValues = [currentValue];
+    }
+
+    // Build a period slice, sampling every `step` points for readability
+    function buildPeriod(daysBack, step, fmt) {
+        let pts = allDates.map((d, i) => ({ d, v: allValues[i] }));
+        if (daysBack !== null) {
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - daysBack);
+            pts = pts.filter(x => x.d >= cutoff);
+        }
+        if (pts.length === 0) pts = [{ d: new Date(), v: currentValue }];
+        const data = [], labels = [];
+        for (let i = 0; i < pts.length; i += step) {
+            data.push(pts[i].v);
+            labels.push(pts[i].d.toLocaleDateString('en-US', fmt));
+        }
+        // Always include the final point
+        const last = pts[pts.length - 1];
+        if (data[data.length - 1] !== last.v) {
+            data.push(last.v);
+            labels.push(last.d.toLocaleDateString('en-US', fmt));
         }
         return { data, labels };
     }
 
-    const DAY_FMT   = { month: 'short', day: 'numeric' };
-    const MONTH_FMT = { month: 'short', year: '2-digit' };
-
+    const allStep = Math.max(1, Math.ceil(allDates.length / 60));
     const periods = {
         '1W':  buildPeriod(7,   1, DAY_FMT),
         '1M':  buildPeriod(30,  1, DAY_FMT),
         '3M':  buildPeriod(90,  3, DAY_FMT),
         '6M':  buildPeriod(180, 5, DAY_FMT),
         '1Y':  buildPeriod(365, 7, MONTH_FMT),
-        'All': buildPeriod(365, 7, MONTH_FMT),
+        'All': buildPeriod(null, allStep, MONTH_FMT),
     };
 
     const mvChart = new Chart(document.getElementById('marketValueChart'), {

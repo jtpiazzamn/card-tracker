@@ -40,6 +40,9 @@
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Market Price</div>
             <div class="text-2xl font-bold text-gray-700 mt-2">${{ "%.2f"|format(card.market_price) }}</div>
+            {% if card.market_price_updated_at %}
+            <div class="text-xs text-gray-300 mt-1">Updated {{ card.market_price_updated_at.strftime('%b %d, %Y') }}</div>
+            {% endif %}
         </div>
         {% endif %}
         {% if card.profit_loss is not none %}
@@ -107,9 +110,9 @@
 
                 <!-- Action Buttons -->
                 <div class="flex flex-wrap gap-2">
-                    <a href="{{ url_for('main.search_price', card_id=card.id) }}"
+                    <a href="{{ url_for('main.refresh_price', card_id=card.id) }}"
                        class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
-                        🔍 Update Market Price
+                        🔄 Refresh Price
                     </a>
                     <a href="{{ url_for('main.edit_card', card_id=card.id) }}"
                        class="text-sm border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors">
