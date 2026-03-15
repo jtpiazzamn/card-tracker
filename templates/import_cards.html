@@ -1,66 +1,98 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <title>CardLedger - Import Cards</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <nav>
-        <h1>Card<span>Ledger</span></h1>
-        <div class="nav-right">
-            <span>Welcome, {{ current_user.username }}</span>
-            {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
-            {% endif %}
-            <a href="{{ url_for('auth.logout') }}">Logout</a>
-        </div>
-    </nav>
-    <div class="form-wrapper">
-        <div class="form-container">
-            <h2>Import Cards</h2>
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <div class="alert">{{ messages[0] }}</div>
-                {% endif %}
-            {% endwith %}
+{% extends 'base.html' %}
 
-            <p style="color:#666; margin-bottom:25px; font-size:14px;">
-                Upload a CSV or Excel file to bulk import cards into your collection.
-                Your file should have the following columns:
-            </p>
+{% block title %}Import Cards — CardLedger{% endblock %}
 
-            <div class="import-columns">
-                <div class="import-col required">Player Name *</div>
-                <div class="import-col required">Buy Price *</div>
-                <div class="import-col">Sport</div>
-                <div class="import-col">Year</div>
-                <div class="import-col">Manufacturer</div>
-                <div class="import-col">Condition</div>
-                <div class="import-col">Sell Price</div>
-                <div class="import-col">Market Price</div>
+{% block content %}
+    <!-- Page Header -->
+    <div class="mb-6">
+        <a href="{{ url_for('main.dashboard') }}"
+           class="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 mb-2">
+            ← Back to Dashboard
+        </a>
+        <h1 class="text-xl font-semibold text-gray-900">Import Cards</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Bulk import your card collection from a CSV or Excel file</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg px-4 py-3 text-sm">
+                {{ messages[0] }}
             </div>
+        {% endif %}
+    {% endwith %}
 
-            <p style="color:#999; font-size:12px; margin-bottom:25px;">* Required fields</p>
+    <div class="max-w-2xl space-y-4">
 
+        <!-- Format Guide -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3">Required CSV Format</h3>
+            <p class="text-sm text-gray-500 mb-4">Your file must include the required columns. Optional columns can be left blank.</p>
+            <div class="flex flex-wrap gap-2">
+                <span class="inline-flex items-center gap-1 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-full">
+                    Player Name <span class="text-red-400">*</span>
+                </span>
+                <span class="inline-flex items-center gap-1 text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100 px-2.5 py-1 rounded-full">
+                    Buy Price <span class="text-red-400">*</span>
+                </span>
+                <span class="text-xs font-medium bg-gray-50 text-gray-500 border border-gray-100 px-2.5 py-1 rounded-full">Sport</span>
+                <span class="text-xs font-medium bg-gray-50 text-gray-500 border border-gray-100 px-2.5 py-1 rounded-full">Year</span>
+                <span class="text-xs font-medium bg-gray-50 text-gray-500 border border-gray-100 px-2.5 py-1 rounded-full">Manufacturer</span>
+                <span class="text-xs font-medium bg-gray-50 text-gray-500 border border-gray-100 px-2.5 py-1 rounded-full">Condition</span>
+                <span class="text-xs font-medium bg-gray-50 text-gray-500 border border-gray-100 px-2.5 py-1 rounded-full">Sell Price</span>
+                <span class="text-xs font-medium bg-gray-50 text-gray-500 border border-gray-100 px-2.5 py-1 rounded-full">Market Price</span>
+            </div>
+            <p class="text-xs text-gray-400 mt-3"><span class="text-red-400">*</span> Required fields</p>
+        </div>
+
+        <!-- Upload Form -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <form method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="form-group">
-                    <label>Select CSV or Excel File</label>
-                    <input type="file" name="file" accept=".csv,.xlsx" required>
-                </div>
-                <div class="form-buttons">
-                    <a href="{{ url_for('main.dashboard') }}" class="btn-cancel">Cancel</a>
-                    <button type="submit" class="btn">Import Cards</button>
+
+                <!-- Drop Zone -->
+                <label for="file-upload"
+                       class="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-colors mb-4">
+                    <div class="text-3xl mb-2">📂</div>
+                    <p class="text-sm font-medium text-gray-700">Click to select a file</p>
+                    <p class="text-xs text-gray-400 mt-1">CSV or Excel (.csv, .xlsx)</p>
+                    <input id="file-upload" type="file" name="file" accept=".csv,.xlsx" required class="hidden">
+                </label>
+
+                <!-- Selected file name display -->
+                <p id="file-name" class="text-xs text-gray-400 text-center mb-4 min-h-[16px]"></p>
+
+                <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <a href="{{ url_for('main.dashboard') }}"
+                       class="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</a>
+                    <button type="submit"
+                            class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
+                        Import Cards
+                    </button>
                 </div>
             </form>
+        </div>
 
-            <div style="margin-top:30px; padding:20px; background:#f8f9fa; border-radius:8px;">
-                <p style="font-size:13px; font-weight:700; color:#1a1a2e; margin-bottom:10px;">💡 TIP — Download your existing collection as a template:</p>
-                <a href="{{ url_for('main.export_csv') }}" class="btn btn-export">📥 Download CSV Template</a>
+        <!-- Tip -->
+        <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-5 flex items-start gap-3">
+            <span class="text-lg mt-0.5">💡</span>
+            <div>
+                <p class="text-sm font-semibold text-indigo-800 mb-1">Download your existing collection as a template</p>
+                <a href="{{ url_for('main.export_csv') }}"
+                   class="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium">
+                    📥 Download CSV Template
+                </a>
             </div>
         </div>
+
     </div>
-</body>
-</html>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const input = document.getElementById('file-upload');
+    const label = document.getElementById('file-name');
+    input.addEventListener('change', () => {
+        label.textContent = input.files[0] ? '📄 ' + input.files[0].name : '';
+    });
+</script>
+{% endblock %}

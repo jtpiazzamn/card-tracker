@@ -1,287 +1,265 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Card Ledger - {{ card.player_name }}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% extends 'base.html' %}
+
+{% block title %}{{ card.player_name }} — CardLedger{% endblock %}
+
+{% block head %}
+    {% if price_history %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-</head>
-<body>
-    <nav>
-        <h1>Card<span>Ledger</span></h1>
-        <div class="nav-right">
-            <span>Welcome, {{ current_user.username }}</span>
-            {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
-            {% endif %}
-            <a href="{{ url_for('main.lots') }}" style="background:#0f3460;">Lots</a>
-            <a href="{{ url_for('auth.logout') }}">Logout</a>
-        </div>
-    </nav>
-    <div class="detail-container">
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="alert">{{ messages[0] }}</div>
-            {% endif %}
-        {% endwith %}
-        <div class="detail-back">
-            <a href="{{ url_for('main.dashboard') }}">← Back to Dashboard</a>
-        </div>
-        <div class="detail-card">
-            <div class="detail-photo">
-                {% if card.photo_filename %}
-                    <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
-                {% else %}
-                    <div class="no-photo-large">No Photo</div>
-                {% endif %}
-            </div>
-            <div class="detail-info">
-                <h2>{{ card.player_name }}</h2>
-                <div class="detail-grid">
-                    <div class="detail-item">
-                        <span class="detail-label">Sport</span>
-                        <span class="detail-value">{{ card.sport or 'N/A' }}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Year</span>
-                        <span class="detail-value">{{ card.year or 'N/A' }}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Manufacturer</span>
-                        <span class="detail-value">{{ card.manufacturer or 'N/A' }}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Condition</span>
-                        <span class="detail-value">{{ card.condition or 'N/A' }}</span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Date Added</span>
-                        <span class="detail-value">{{ card.date_added.strftime('%B %d, %Y') if card.date_added else 'N/A' }}</span>
-                    </div>
-                </div>
-                <div class="detail-prices">
-                    <div class="price-box">
-                        <span class="price-label">Paid</span>
-                        <span class="price-value">${{ "%.2f"|format(card.buy_price) }}</span>
-                    </div>
-                    {% if card.sell_price %}
-                    <div class="price-box">
-                        <span class="price-label">Sold For</span>
-                        <span class="price-value">${{ "%.2f"|format(card.sell_price) }}</span>
-                    </div>
-                    {% endif %}
-                    {% if card.market_price %}
-                    <div class="price-box">
-                        <span class="price-label">Market Price</span>
-                        <span class="price-value">${{ "%.2f"|format(card.market_price) }}</span>
-                    </div>
-                    {% endif %}
-                    {% if card.profit_loss is not none %}
-                    <div class="price-box {% if card.profit_loss >= 0 %}profit-box{% else %}loss-box{% endif %}">
-                        <span class="price-label">Profit / Loss</span>
-                        <span class="price-value">{% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}</span>
-                    </div>
-                    {% endif %}
-                </div>
-                {% if card.notes %}
-                <div style="margin-bottom:20px; padding:15px; background:#f8f9fa; border-radius:8px; border-left:3px solid #e94560;">
-                    <span style="font-size:11px; font-weight:700; color:#888; letter-spacing:1px;">NOTES</span>
-                    <p style="margin:5px 0 0; color:#444; font-size:14px;">{{ card.notes }}</p>
-                </div>
-                {% endif %}
-                <div class="detail-actions">
-                    <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn">🔍 Update Market Price</a>
-                    <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn btn-edit">✏️ Edit Card</a>
-                    <button type="button" id="aiAdviceBtn" class="btn" onclick="getAiAdvice()">🤖 Get AI Advice</button>
-                    <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">🗑️ Delete Card</a>
-                </div>
-            </div>
-        </div>
+    {% endif %}
+{% endblock %}
 
-        <!-- AI Card Advice Section -->
-        <div id="aiAdviceSection" style="margin-top:30px; background:#1a1a2e; border-radius:12px; padding:25px; border:1px solid #e94560; display:none;">
-            <h3 style="color:#e94560; margin:0 0 20px 0; font-size:16px; letter-spacing:1px;">🤖 AI CARD ADVICE</h3>
-            <div id="aiAdviceContent" style="background:#0f3460; border-radius:8px; padding:20px;">
-                <div id="aiLoading" style="text-align:center; color:#aaa;">Loading analysis...</div>
-                <div id="aiResult" style="display:none;">
-                    <div style="margin-bottom:15px;">
-                        <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">RECOMMENDATION</div>
-                        <div id="recommendation" style="font-family:'Oswald',sans-serif; font-size:20px; font-weight:700; color:#e94560;">--</div>
-                    </div>
-                    <div style="margin-bottom:15px;">
-                        <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">ANALYSIS</div>
-                        <p id="analysis" style="margin:0; color:#ccc; font-size:14px; line-height:1.5;">--</p>
-                    </div>
-                </div>
-                <div id="aiError" style="display:none; color:#e74c3c; font-size:13px;">--</div>
+{% block content %}
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg px-4 py-3 text-sm">
+                {{ messages[0] }}
             </div>
-        </div>
+        {% endif %}
+    {% endwith %}
 
-        <!-- eBay Sold Listings -->
-        {% if ebay_data %}
-        <div style="margin-top:30px; background:#1a1a2e; border-radius:12px; padding:25px; border:1px solid #0f3460;">
-            <h3 style="color:#e94560; margin:0 0 20px 0; font-size:16px; letter-spacing:1px;">🛒 EBAY SOLD LISTINGS</h3>
-            <div style="display:flex; gap:20px; flex-wrap:wrap; margin-bottom:20px;">
-                <div style="background:#0f3460; border-radius:8px; padding:15px 20px; text-align:center; flex:1; min-width:100px;">
-                    <div style="font-size:10px; color:#aaa; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Average</div>
-                    <div style="font-family:'Oswald',sans-serif; font-size:24px; color:white; font-weight:700;">${{ "{:,.2f}".format(ebay_data.average) }}</div>
-                </div>
-                <div style="background:#0f3460; border-radius:8px; padding:15px 20px; text-align:center; flex:1; min-width:100px;">
-                    <div style="font-size:10px; color:#aaa; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Low</div>
-                    <div style="font-family:'Oswald',sans-serif; font-size:24px; color:#27ae60; font-weight:700;">${{ "{:,.2f}".format(ebay_data.low) }}</div>
-                </div>
-                <div style="background:#0f3460; border-radius:8px; padding:15px 20px; text-align:center; flex:1; min-width:100px;">
-                    <div style="font-size:10px; color:#aaa; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">High</div>
-                    <div style="font-family:'Oswald',sans-serif; font-size:24px; color:#e94560; font-weight:700;">${{ "{:,.2f}".format(ebay_data.high) }}</div>
-                </div>
-                <div style="background:#0f3460; border-radius:8px; padding:15px 20px; text-align:center; flex:1; min-width:100px;">
-                    <div style="font-size:10px; color:#aaa; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Listings</div>
-                    <div style="font-family:'Oswald',sans-serif; font-size:24px; color:white; font-weight:700;">{{ ebay_data.count }}</div>
-                </div>
-            </div>
-            <table style="width:100%; border-collapse:collapse;">
-                <thead>
-                    <tr>
-                        <th style="text-align:left; color:#aaa; font-size:11px; letter-spacing:1px; text-transform:uppercase; padding:8px 0; border-bottom:1px solid #0f3460;">Title</th>
-                        <th style="text-align:right; color:#aaa; font-size:11px; letter-spacing:1px; text-transform:uppercase; padding:8px 0; border-bottom:1px solid #0f3460;">Price</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for listing in ebay_data.listings %}
-                    <tr>
-                        <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:13px; color:#ccc;">
-                            <a href="{{ listing.url }}" target="_blank" style="color:#ccc; text-decoration:none;">{{ listing.title }}</a>
-                        </td>
-                        <td style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:14px; color:white; font-weight:700; text-align:right;">${{ "{:,.2f}".format(listing.price) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- Back -->
+    <a href="{{ url_for('main.dashboard') }}"
+       class="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 mb-5">
+        ← Back to Dashboard
+    </a>
+
+    <!-- Price Stat Cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Buy Price</div>
+            <div class="text-2xl font-bold text-blue-600 mt-2">${{ "%.2f"|format(card.buy_price) }}</div>
         </div>
-        {% elif ebay_error %}
-        <div style="margin-top:30px; background:#1a1a2e; border-radius:12px; padding:20px; border:1px solid #0f3460;">
-            <h3 style="color:#e94560; margin:0 0 10px 0; font-size:16px; letter-spacing:1px;">🛒 EBAY SOLD LISTINGS</h3>
-            <p style="color:#aaa; font-size:13px;">Could not load eBay data: {{ ebay_error }}</p>
+        {% if card.sell_price %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Sold For</div>
+            <div class="text-2xl font-bold text-green-600 mt-2">${{ "%.2f"|format(card.sell_price) }}</div>
         </div>
         {% endif %}
-
-        {% if price_history %}
-        <div style="margin-top:30px; background:#1a1a2e; border-radius:12px; padding:25px; border:1px solid #e94560;">
-            <h3 style="color:#e94560; margin:0 0 20px 0; font-size:16px; letter-spacing:1px;">📈 PRICE HISTORY</h3>
-            <canvas id="priceChart" height="100"></canvas>
+        {% if card.market_price %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Market Price</div>
+            <div class="text-2xl font-bold text-gray-700 mt-2">${{ "%.2f"|format(card.market_price) }}</div>
         </div>
+        {% endif %}
+        {% if card.profit_loss is not none %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Profit / Loss</div>
+            <div class="text-2xl font-bold mt-2 {% if card.profit_loss >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                {% if card.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(card.profit_loss) }}
+            </div>
+        </div>
+        {% endif %}
+    </div>
 
-        <script>
-            const labels = [
-                {% for h in price_history %}
-                    "{{ h.date_recorded.strftime('%b %d, %Y') }}"{% if not loop.last %},{% endif %}
-                {% endfor %}
-            ];
-            const prices = [
-                {% for h in price_history %}
-                    {{ h.price }}{% if not loop.last %},{% endif %}
-                {% endfor %}
-            ];
-            const buyPrice = {{ card.buy_price }};
+    <!-- Card Photo + Info -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div class="flex flex-col sm:flex-row gap-6">
 
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Market Price',
-                            data: prices,
-                            borderColor: '#e94560',
-                            backgroundColor: 'rgba(233, 69, 96, 0.1)',
-                            borderWidth: 2,
-                            pointBackgroundColor: '#e94560',
-                            pointRadius: 5,
-                            tension: 0.3,
-                            fill: true
-                        },
-                        {
-                            label: 'Buy Price',
-                            data: labels.map(() => buyPrice),
-                            borderColor: '#aaaaaa',
-                            borderWidth: 1,
-                            borderDash: [5, 5],
-                            pointRadius: 0,
-                            fill: false
-                        }
-                    ]
+            <!-- Photo -->
+            <div class="flex-shrink-0">
+                {% if card.photo_filename %}
+                    <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}"
+                         alt="{{ card.player_name }}"
+                         class="w-44 h-60 object-cover rounded-xl border border-gray-100">
+                {% else %}
+                    <div class="w-44 h-60 bg-gray-100 rounded-xl flex items-center justify-center text-gray-400 text-sm">
+                        No Photo
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Details -->
+            <div class="flex-1 min-w-0">
+                <h2 class="text-2xl font-bold text-gray-900 mb-5">{{ card.player_name }}</h2>
+
+                <dl class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4 mb-5">
+                    <div>
+                        <dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Sport</dt>
+                        <dd class="text-sm font-semibold text-gray-800 mt-0.5">{{ card.sport or '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Year</dt>
+                        <dd class="text-sm font-semibold text-gray-800 mt-0.5">{{ card.year or '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Manufacturer</dt>
+                        <dd class="text-sm font-semibold text-gray-800 mt-0.5">{{ card.manufacturer or '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Condition</dt>
+                        <dd class="text-sm font-semibold text-gray-800 mt-0.5">{{ card.condition or '—' }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium text-gray-400 uppercase tracking-wide">Date Added</dt>
+                        <dd class="text-sm font-semibold text-gray-800 mt-0.5">
+                            {{ card.date_added.strftime('%b %d, %Y') if card.date_added else '—' }}
+                        </dd>
+                    </div>
+                </dl>
+
+                {% if card.notes %}
+                <div class="bg-gray-50 border-l-[3px] border-indigo-400 rounded-r-lg px-4 py-3 mb-5">
+                    <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Notes</div>
+                    <p class="text-sm text-gray-700">{{ card.notes }}</p>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ url_for('main.search_price', card_id=card.id) }}"
+                       class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        🔍 Update Market Price
+                    </a>
+                    <a href="{{ url_for('main.edit_card', card_id=card.id) }}"
+                       class="text-sm border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors">
+                        ✏️ Edit Card
+                    </a>
+                    <a href="{{ url_for('main.delete_card', card_id=card.id) }}"
+                       onclick="return confirm('Delete this card?')"
+                       class="text-sm border border-red-200 bg-white hover:bg-red-50 text-red-500 px-4 py-2 rounded-lg font-medium transition-colors">
+                        🗑️ Delete Card
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- eBay Sold Listings -->
+    {% if ebay_data %}
+    <div class="bg-gray-900 rounded-xl border border-gray-700 p-6 mb-6">
+        <h3 class="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-5">🛒 eBay Sold Listings</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Average</div>
+                <div class="text-xl font-bold text-white">${{ "{:,.2f}".format(ebay_data.average) }}</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Low</div>
+                <div class="text-xl font-bold text-green-400">${{ "{:,.2f}".format(ebay_data.low) }}</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">High</div>
+                <div class="text-xl font-bold text-red-400">${{ "{:,.2f}".format(ebay_data.high) }}</div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-4 text-center">
+                <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Listings</div>
+                <div class="text-xl font-bold text-white">{{ ebay_data.count }}</div>
+            </div>
+        </div>
+        <table class="w-full">
+            <thead>
+                <tr class="border-b border-gray-700">
+                    <th class="text-left text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2.5">Title</th>
+                    <th class="text-right text-xs font-semibold text-gray-400 uppercase tracking-wide pb-2.5">Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for listing in ebay_data.listings %}
+                <tr class="border-b border-gray-800">
+                    <td class="py-2.5 text-sm text-gray-300 pr-4">
+                        <a href="{{ listing.url }}" target="_blank"
+                           class="hover:text-white transition-colors">{{ listing.title }}</a>
+                    </td>
+                    <td class="py-2.5 text-sm font-bold text-white text-right whitespace-nowrap">
+                        ${{ "{:,.2f}".format(listing.price) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% elif ebay_error %}
+    <div class="bg-gray-900 rounded-xl border border-gray-700 p-6 mb-6">
+        <h3 class="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-2">🛒 eBay Sold Listings</h3>
+        <p class="text-sm text-gray-400">Could not load eBay data: {{ ebay_error }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Price History Chart -->
+    {% if price_history %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">📈 Price History</h3>
+        <div class="relative h-[220px]">
+            <canvas id="priceChart"></canvas>
+        </div>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if price_history %}
+<script>
+    const labels = [
+        {% for h in price_history %}
+            "{{ h.date_recorded.strftime('%b %d, %Y') }}"{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    const prices = [
+        {% for h in price_history %}
+            {{ h.price }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+    const buyPrice = {{ card.buy_price }};
+
+    new Chart(document.getElementById('priceChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Market Price',
+                    data: prices,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99,102,241,0.10)',
+                    borderWidth: 2,
+                    pointBackgroundColor: '#6366f1',
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.3,
+                    fill: true
                 },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#cccccc' }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: ctx => '$' + ctx.parsed.y.toFixed(2)
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            ticks: { color: '#cccccc' },
-                            grid: { color: 'rgba(255,255,255,0.05)' }
-                        },
-                        y: {
-                            ticks: {
-                                color: '#cccccc',
-                                callback: val => '$' + val.toFixed(2)
-                            },
-                            grid: { color: 'rgba(255,255,255,0.05)' }
-                        }
+                {
+                    label: 'Buy Price',
+                    data: labels.map(() => buyPrice),
+                    borderColor: '#d1d5db',
+                    borderWidth: 1.5,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { labels: { color: '#6b7280', font: { size: 11 } } },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => ' $' + ctx.parsed.y.toFixed(2)
                     }
                 }
-            });
-        </script>
-        {% endif %}
-
-        <script>
-        async function getAiAdvice() {
-            const btn = document.getElementById('aiAdviceBtn');
-            const section = document.getElementById('aiAdviceSection');
-            const loading = document.getElementById('aiLoading');
-            const result = document.getElementById('aiResult');
-            const error = document.getElementById('aiError');
-            
-            // Show section and loading state
-            section.style.display = 'block';
-            loading.style.display = 'block';
-            result.style.display = 'none';
-            error.style.display = 'none';
-            btn.disabled = true;
-            
-            try {
-                const response = await fetch('/card_advice/{{ card.id }}');
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Failed to get advice');
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#9ca3af', font: { size: 11 } },
+                    grid: { color: 'rgba(0,0,0,0.04)' },
+                    border: { display: false }
+                },
+                y: {
+                    ticks: {
+                        color: '#9ca3af',
+                        font: { size: 11 },
+                        callback: v => '$' + v.toFixed(2)
+                    },
+                    grid: { color: 'rgba(0,0,0,0.04)' },
+                    border: { display: false }
                 }
-                
-                const data = await response.json();
-                
-                // Display results
-                document.getElementById('recommendation').textContent = data.recommendation;
-                document.getElementById('analysis').textContent = data.analysis;
-                
-                loading.style.display = 'none';
-                result.style.display = 'block';
-            } catch (err) {
-                document.getElementById('aiError').textContent = 'Error: ' + err.message;
-                loading.style.display = 'none';
-                error.style.display = 'block';
-            } finally {
-                btn.disabled = false;
             }
         }
-        </script>
-
-    </div>
-</body>
-</html>
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <title>{% block title %}CardLedger{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+
+    <!-- Top Navigation Bar -->
+    <header class="fixed top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 z-50 flex items-center justify-between px-6">
+        <div class="flex items-center gap-3">
+            <button class="lg:hidden text-gray-500 hover:text-gray-700 p-1" onclick="toggleSidebar()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                </svg>
+            </button>
+            <a href="{{ url_for('main.dashboard') }}" class="flex items-center gap-0.5">
+                <span class="text-xl font-bold text-indigo-600">Card</span><span class="text-xl font-bold text-gray-800">Ledger</span>
+            </a>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-sm text-gray-500 hidden sm:block">
+                Welcome, <span class="font-semibold text-gray-700">{{ current_user.username }}</span>
+            </span>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('main.change_password') }}" class="text-sm text-gray-500 hover:text-gray-700 font-medium hidden sm:block">Settings</a>
+            <a href="{{ url_for('auth.logout') }}" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                Logout
+            </a>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed top-16 left-0 h-[calc(100vh-4rem)] w-56 bg-gray-900 z-40 flex flex-col -translate-x-full lg:translate-x-0 transition-transform duration-200">
+        <nav class="flex flex-col gap-0.5 py-4 flex-1">
+            <a href="{{ url_for('main.dashboard') }}"
+               class="flex items-center gap-3 pl-4 pr-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]
+                      {% if request.endpoint == 'main.dashboard' %}border-indigo-400 bg-white/10 text-white{% else %}border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-100{% endif %}">
+                <span class="text-base leading-none">🏠</span>
+                Dashboard
+            </a>
+            <a href="{{ url_for('main.lots') }}"
+               class="flex items-center gap-3 pl-4 pr-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]
+                      {% if request.endpoint == 'main.lots' %}border-indigo-400 bg-white/10 text-white{% else %}border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-100{% endif %}">
+                <span class="text-base leading-none">📦</span>
+                Lots
+            </a>
+            <a href="{{ url_for('main.watchlist') }}"
+               class="flex items-center gap-3 pl-4 pr-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]
+                      {% if request.endpoint == 'main.watchlist' %}border-indigo-400 bg-white/10 text-white{% else %}border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-100{% endif %}">
+                <span class="text-base leading-none">👀</span>
+                Watchlist
+            </a>
+            <a href="{{ url_for('main.analytics') }}"
+               class="flex items-center gap-3 pl-4 pr-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]
+                      {% if request.endpoint == 'main.analytics' %}border-indigo-400 bg-white/10 text-white{% else %}border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-100{% endif %}">
+                <span class="text-base leading-none">📊</span>
+                Analytics
+            </a>
+            <a href="{{ url_for('main.research') }}"
+               class="flex items-center gap-3 pl-4 pr-3 py-2.5 text-sm font-medium transition-colors border-l-[3px]
+                      {% if request.endpoint == 'main.research' %}border-indigo-400 bg-white/10 text-white{% else %}border-transparent text-gray-400 hover:bg-white/5 hover:text-gray-100{% endif %}">
+                <span class="text-base leading-none">🔍</span>
+                Research
+            </a>
+        </nav>
+
+        <!-- Sticky Add Card footer -->
+        <div class="border-t border-gray-700/60 p-3">
+            <a href="{{ url_for('main.add_card') }}"
+               class="flex items-center justify-center gap-2 w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium py-2.5 rounded-lg transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                </svg>
+                Add Card
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="pt-16 lg:pl-56 min-h-screen">
+        <div class="p-6">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Inactivity Timer -->
+    <script>
+    let inactivityTime = 0;
+    const warningTime = 25 * 60;
+    const logoutTime = 30 * 60;
+    let warned = false;
+
+    const _inactivityTimer = setInterval(() => {
+        inactivityTime++;
+        if (inactivityTime >= logoutTime) {
+            window.location.href = "{{ url_for('auth.logout') }}";
+        } else if (inactivityTime >= warningTime && !warned) {
+            warned = true;
+            alert('You will be logged out in 5 minutes due to inactivity.');
+        }
+    }, 1000);
+
+    ['mousemove', 'keypress', 'click', 'scroll', 'touchstart'].forEach(event => {
+        document.addEventListener(event, () => {
+            inactivityTime = 0;
+            warned = false;
+        });
+    });
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('-translate-x-full');
+    }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,105 +1,150 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <title>Card Ledger - Edit Card</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <nav>
-        <h1>Card<span>Ledger</span></h1>
-        <div class="nav-right">
-            <span>Welcome, {{ current_user.username }}</span>
-            {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
-            {% endif %}
-            <a href="{{ url_for('main.lots') }}" style="background:#0f3460;">Lots</a>
-            <a href="{{ url_for('auth.logout') }}">Logout</a>
-        </div>
-    </nav>
-    <div class="form-container">
-        <h2>Edit Card</h2>
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="alert">{{ messages[0] }}</div>
-            {% endif %}
-        {% endwith %}
-        <form method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-group">
-                <label>Player Name *</label>
-                <input type="text" name="player_name" value="{{ card.player_name }}" required>
+{% extends 'base.html' %}
+
+{% block title %}Edit Card — CardLedger{% endblock %}
+
+{% block content %}
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg px-4 py-3 text-sm">
+                {{ messages[0] }}
             </div>
-            <div class="form-group">
-                <label>Sport</label>
-                <select name="sport">
-                    <option value="">Select Sport</option>
-                    <option value="Baseball" {% if card.sport == 'Baseball' %}selected{% endif %}>Baseball</option>
-                    <option value="Basketball" {% if card.sport == 'Basketball' %}selected{% endif %}>Basketball</option>
-                    <option value="Football" {% if card.sport == 'Football' %}selected{% endif %}>Football</option>
-                    <option value="Hockey" {% if card.sport == 'Hockey' %}selected{% endif %}>Hockey</option>
-                    <option value="Soccer" {% if card.sport == 'Soccer' %}selected{% endif %}>Soccer</option>
-                    <option value="Other" {% if card.sport == 'Other' %}selected{% endif %}>Other</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Year</label>
-                <input type="text" name="year" value="{{ card.year }}">
-            </div>
-            <div class="form-group">
-                <label>Manufacturer</label>
-                <input type="text" name="manufacturer" value="{{ card.manufacturer }}">
-            </div>
-            <div class="form-group">
-                <label>Condition</label>
-                <select name="condition">
-                    <option value="">Select Condition</option>
-                    <option value="Poor" {% if card.condition == 'Poor' %}selected{% endif %}>Poor</option>
-                    <option value="Fair" {% if card.condition == 'Fair' %}selected{% endif %}>Fair</option>
-                    <option value="Good" {% if card.condition == 'Good' %}selected{% endif %}>Good</option>
-                    <option value="Very Good" {% if card.condition == 'Very Good' %}selected{% endif %}>Very Good</option>
-                    <option value="Excellent" {% if card.condition == 'Excellent' %}selected{% endif %}>Excellent</option>
-                    <option value="Near Mint" {% if card.condition == 'Near Mint' %}selected{% endif %}>Near Mint</option>
-                    <option value="Mint" {% if card.condition == 'Mint' %}selected{% endif %}>Mint</option>
-                    <option value="Gem Mint" {% if card.condition == 'Gem Mint' %}selected{% endif %}>Gem Mint</option>
-                </select>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Buy Price *</label>
-                    <input type="number" name="buy_price" step="0.01" value="{{ card.buy_price }}" required>
-                </div>
-                <div class="form-group">
-                    <label>Sell Price (if sold)</label>
-                    <input type="number" name="sell_price" step="0.01" value="{{ card.sell_price or '' }}">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>Folder (optional)</label>
-                <select name="folder_id">
-                    <option value="">-- No Folder --</option>
-                    {% for folder in folders %}
-                        <option value="{{ folder.id }}" {% if card.folder_id == folder.id %}selected{% endif %}>📁 {{ folder.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea name="notes" placeholder="e.g. Purchased at card show, signed copy, PSA graded..." rows="3" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-family:inherit; font-size:14px; resize:vertical;">{{ card.notes or '' }}</textarea>
-            </div>
-            <div class="form-group">
-                <label>Card Photo (leave blank to keep current)</label>
-                {% if card.photo_filename %}
-                    <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" style="width:100px; border-radius:5px; margin-bottom:8px; display:block;">
-                {% endif %}
-                <input type="file" name="photo" accept="image/*">
-            </div>
-            <div class="form-buttons">
-                <a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="btn-cancel">Cancel</a>
-                <button type="submit" class="btn">Save Changes</button>
-            </div>
-        </form>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Page Header -->
+    <div class="mb-6">
+        <a href="{{ url_for('main.card_detail', card_id=card.id) }}"
+           class="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 mb-2">
+            ← Back to Card
+        </a>
+        <h1 class="text-xl font-semibold text-gray-900">Edit Card</h1>
+        <p class="text-sm text-gray-400 mt-0.5">{{ card.player_name }}</p>
     </div>
-</body>
-</html>
+
+    <div class="max-w-2xl">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <form method="POST" enctype="multipart/form-data">
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Player Name <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" name="player_name" value="{{ card.player_name }}" required
+                           class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Sport</label>
+                        <select name="sport" title="Sport"
+                                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                            <option value="">Select Sport</option>
+                            <option value="Baseball"   {% if card.sport == 'Baseball'   %}selected{% endif %}>Baseball</option>
+                            <option value="Basketball" {% if card.sport == 'Basketball' %}selected{% endif %}>Basketball</option>
+                            <option value="Football"   {% if card.sport == 'Football'   %}selected{% endif %}>Football</option>
+                            <option value="Hockey"     {% if card.sport == 'Hockey'     %}selected{% endif %}>Hockey</option>
+                            <option value="Soccer"     {% if card.sport == 'Soccer'     %}selected{% endif %}>Soccer</option>
+                            <option value="Other"      {% if card.sport == 'Other'      %}selected{% endif %}>Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Year</label>
+                        <input type="text" name="year" value="{{ card.year }}" title="Year" placeholder="e.g. 1952"
+                               class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Manufacturer</label>
+                        <input type="text" name="manufacturer" value="{{ card.manufacturer }}" title="Manufacturer" placeholder="e.g. Topps"
+                               class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Condition</label>
+                        <select name="condition" title="Condition"
+                                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                            <option value="">Select Condition</option>
+                            <option value="Poor"      {% if card.condition == 'Poor'      %}selected{% endif %}>Poor</option>
+                            <option value="Fair"      {% if card.condition == 'Fair'      %}selected{% endif %}>Fair</option>
+                            <option value="Good"      {% if card.condition == 'Good'      %}selected{% endif %}>Good</option>
+                            <option value="Very Good" {% if card.condition == 'Very Good' %}selected{% endif %}>Very Good</option>
+                            <option value="Excellent" {% if card.condition == 'Excellent' %}selected{% endif %}>Excellent</option>
+                            <option value="Near Mint" {% if card.condition == 'Near Mint' %}selected{% endif %}>Near Mint</option>
+                            <option value="Mint"      {% if card.condition == 'Mint'      %}selected{% endif %}>Mint</option>
+                            <option value="Gem Mint"  {% if card.condition == 'Gem Mint'  %}selected{% endif %}>Gem Mint</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            Buy Price <span class="text-red-400">*</span>
+                        </label>
+                        <input type="number" name="buy_price" step="0.01"
+                               value="{{ card.buy_price }}" required title="Buy price" placeholder="0.00"
+                               class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            Sell Price <span class="text-gray-400 font-normal">(if sold)</span>
+                        </label>
+                        <input type="number" name="sell_price" step="0.01"
+                               value="{{ card.sell_price or '' }}" title="Sell price" placeholder="0.00"
+                               class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Folder <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <select name="folder_id" title="Folder"
+                            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                        <option value="">— No Folder —</option>
+                        {% for folder in folders %}
+                            <option value="{{ folder.id }}"
+                                    {% if card.folder_id == folder.id %}selected{% endif %}>
+                                📁 {{ folder.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+                    <textarea name="notes" rows="3"
+                              placeholder="e.g. Purchased at card show, signed copy, PSA graded..."
+                              class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white resize-y">{{ card.notes or '' }}</textarea>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Card Photo <span class="text-gray-400 font-normal">(leave blank to keep current)</span>
+                    </label>
+                    {% if card.photo_filename %}
+                        <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}"
+                             alt="{{ card.player_name }}"
+                             class="w-24 h-32 object-cover rounded-lg border border-gray-100 mb-3">
+                    {% endif %}
+                    <input type="file" name="photo" accept="image/*" title="Upload replacement card photo"
+                           class="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                </div>
+
+                <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <a href="{{ url_for('main.card_detail', card_id=card.id) }}"
+                       class="text-sm text-gray-500 hover:text-gray-700 font-medium">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
+                        Save Changes
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+{% endblock %}

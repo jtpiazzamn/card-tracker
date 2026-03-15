@@ -1,503 +1,459 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <title>Card Ledger - Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% extends 'base.html' %}
+
+{% block title %}Dashboard — CardLedger{% endblock %}
+
+{% block head %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .folders-section { margin-bottom: 24px; }
-        .folders-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .folders-header h3 { color: #1a1a2e; font-size: 16px; margin: 0; }
-        .folder-grid { display: flex; flex-wrap: wrap; gap: 10px; }
-        .folder-tile {
-            display: flex; align-items: center; gap: 8px;
-            background: #fff; border: 2px solid #e0e0e0;
-            border-radius: 10px; padding: 10px 16px;
-            cursor: pointer; text-decoration: none;
-            color: #1a1a2e; font-size: 14px; font-weight: 600;
-            transition: all 0.2s;
-        }
-        .folder-tile:hover { border-color: #e63946; background: #fff5f5; }
-        .folder-tile.active { border-color: #e63946; background: #e63946; color: #fff; }
-        .folder-tile .folder-count {
-            background: #f0f0f0; border-radius: 20px;
-            padding: 2px 8px; font-size: 12px; font-weight: 700; color: #666;
-        }
-        .folder-tile.active .folder-count { background: rgba(255,255,255,0.3); color: #fff; }
-        .folder-actions { display: flex; gap: 6px; margin-left: 4px; }
-        .folder-action-btn {
-            background: none; border: none; cursor: pointer;
-            font-size: 13px; padding: 0 3px; opacity: 0.6;
-        }
-        .folder-action-btn:hover { opacity: 1; }
-        .new-folder-form { display: flex; gap: 8px; align-items: center; }
-        .new-folder-form input {
-            padding: 8px 12px; border: 1px solid #ddd;
-            border-radius: 8px; font-size: 14px; width: 180px;
-        }
-        .new-folder-form button {
-            padding: 8px 14px; background: #e63946;
-            color: white; border: none; border-radius: 8px;
-            cursor: pointer; font-size: 14px; font-weight: 600;
-        }
-        .new-folder-form button:hover { background: #c0303a; }
-        .view-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
-        .view-btn {
-            padding: 8px 18px; border-radius: 8px; border: 2px solid #e0e0e0;
-            background: #fff; color: #1a1a2e; font-size: 14px; font-weight: 600;
-            cursor: pointer; text-decoration: none; transition: all 0.2s;
-        }
-        .view-btn:hover { border-color: #e63946; }
-        .view-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
-        .folder-view-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
-        .folder-view-tile {
-            background: #fff; border: 2px solid #e0e0e0; border-radius: 12px;
-            padding: 20px 24px; text-decoration: none; color: #1a1a2e;
-            min-width: 160px; text-align: center; transition: all 0.2s;
-        }
-        .folder-view-tile:hover { border-color: #e63946; background: #fff5f5; }
-        .folder-view-tile .folder-icon { font-size: 32px; margin-bottom: 8px; }
-        .folder-view-tile .folder-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-        .folder-view-tile .folder-card-count { font-size: 12px; color: #888; }
-        .bulk-toolbar {
-            display: none; align-items: center; gap: 12px;
-            background: #1a1a2e; color: white;
-            padding: 12px 16px; border-radius: 10px;
-            margin-bottom: 16px; flex-wrap: wrap;
-        }
-        .bulk-toolbar.visible { display: flex; }
-        .bulk-toolbar label { font-size: 14px; font-weight: 600; }
-        .bulk-toolbar select { padding: 7px 12px; border-radius: 8px; border: none; font-size: 14px; }
-        .bulk-toolbar button {
-            padding: 7px 16px; background: #e63946;
-            color: white; border: none; border-radius: 8px;
-            cursor: pointer; font-size: 14px; font-weight: 600;
-        }
-        .bulk-toolbar button:hover { background: #c0303a; }
-        .card-item { position: relative; }
-        .card-checkbox {
-            position: absolute; top: 10px; left: 10px;
-            width: 20px; height: 20px; cursor: pointer;
-            accent-color: #e63946; z-index: 10;
-        }
-        .card-item.selected { outline: 3px solid #e63946; border-radius: 10px; }
-        .select-all-row {
-            display: flex; align-items: center; gap: 8px;
-            margin-bottom: 12px; font-size: 14px; color: #555; font-weight: 600;
-        }
-        .select-all-row input { width: 18px; height: 18px; accent-color: #e63946; cursor: pointer; }
-        .unassigned-label {
-            font-size: 15px; font-weight: 700; color: #888;
-            margin: 24px 0 12px; letter-spacing: 0.5px;
-        }
+{% endblock %}
 
-        /* Portfolio Charts */
-        .portfolio-charts {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 24px;
-        }
-        .chart-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            border: 1px solid #eee;
-        }
-        .chart-card h4 {
-            font-family: 'Oswald', sans-serif;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: #1a1a2e;
-            margin-bottom: 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid #e94560;
-        }
-        @media (max-width: 900px) {
-            .portfolio-charts { grid-template-columns: 1fr 1fr; }
-        }
-        @media (max-width: 600px) {
-            .portfolio-charts { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-    <nav>
-        <h1>Card<span>Ledger</span></h1>
-        <div class="nav-right">
-            <span>Welcome, {{ current_user.username }}</span>
-            {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
-            {% endif %}
-            <a href="{{ url_for('main.analytics') }}" style="background:#0f3460;">Analytics</a>
-            <a href="{{ url_for('main.research') }}" style="background:#0f3460;">Research</a>
-            <a href="{{ url_for('main.watchlist') }}" style="background:#0f3460;">Watchlist</a>
-            <a href="{{ url_for('main.lots') }}" style="background:#0f3460;">Lots</a>
-            <a href="{{ url_for('main.change_password') }}" style="background:#0f3460;">Change Password</a>
-            <a href="{{ url_for('auth.logout') }}">Logout</a>
+{% block content %}
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg px-4 py-3 text-sm">
+                {{ messages[0] }}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Stats Banner -->
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Cards</div>
+            <div class="text-3xl font-bold text-gray-900 mt-2">{{ cards|length }}</div>
         </div>
-    </nav>
-    <div class="page-wrapper">
-        <div class="dashboard-container">
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <div class="alert" style="margin-bottom:20px;">{{ messages[0] }}</div>
-                {% endif %}
-            {% endwith %}
-
-            <div class="stats-banner">
-                <div class="stat-block">
-                    <div class="stat-label">Total Cards</div>
-                    <div class="stat-value">{{ cards|length }}</div>
-                </div>
-                <div class="stat-block">
-                    <div class="stat-label">Total Invested</div>
-                    <div class="stat-value">${{ "{:,.2f}".format(total_invested) }}</div>
-                </div>
-                <div class="stat-block">
-                    <div class="stat-label">Est. Market Value</div>
-                    <div class="stat-value">${{ "{:,.2f}".format(est_market_value) }}</div>
-                </div>
-                <div class="stat-block">
-                    <div class="stat-label">Realized Gains</div>
-                    <div class="stat-value {% if realized_gains >= 0 %}profit{% else %}loss{% endif %}">
-                        {% if realized_gains >= 0 %}+{% endif %}${{ "{:,.2f}".format(realized_gains) }}
-                    </div>
-                </div>
-                <div class="stat-block">
-                    <div class="stat-label">Total Profit / Loss</div>
-                    <div class="stat-value {% if total_profit_loss >= 0 %}profit{% else %}loss{% endif %}">
-                        {% if total_profit_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(total_profit_loss) }}
-                    </div>
-                </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Invested</div>
+            <div class="text-3xl font-bold text-gray-900 mt-2">${{ "{:,.2f}".format(total_invested) }}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Est. Market Value</div>
+            <div class="text-3xl font-bold text-gray-900 mt-2">${{ "{:,.2f}".format(est_market_value) }}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Realized Gains</div>
+            <div class="text-3xl font-bold mt-2 {% if realized_gains >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                {% if realized_gains >= 0 %}+{% endif %}${{ "{:,.2f}".format(realized_gains) }}
             </div>
-
-            <!-- PORTFOLIO CHARTS -->
-            {% if chart_sport_labels %}
-            <div class="portfolio-charts">
-                <div class="chart-card">
-                    <h4>📊 Cards by Sport</h4>
-                    <canvas id="sportPieChart" height="200"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h4>💰 Invested vs Value</h4>
-                    <canvas id="investedChart" height="200"></canvas>
-                </div>
-                <div class="chart-card">
-                    <h4>📈 Profit / Loss by Sport</h4>
-                    <canvas id="plChart" height="200"></canvas>
-                </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total P/L</div>
+            <div class="text-3xl font-bold mt-2 {% if total_profit_loss >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                {% if total_profit_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(total_profit_loss) }}
             </div>
-            {% endif %}
-
-            <!-- FOLDERS MANAGEMENT BAR -->
-            <div class="folders-section">
-                <div class="folders-header">
-                    <h3>📁 Folders</h3>
-                    <form method="POST" action="{{ url_for('main.create_folder') }}" class="new-folder-form">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <input type="text" name="name" placeholder="New folder name..." maxlength="100">
-                        <button type="submit">+ Create</button>
-                    </form>
-                </div>
-                {% if folders %}
-                <div class="folder-grid">
-                    {% for folder in folders %}
-                    <div style="display:flex; align-items:center; gap:4px;">
-                        <span class="folder-tile">
-                            📁 {{ folder.name }}
-                            <span class="folder-count">{{ folder.cards|length }}</span>
-                        </span>
-                        <div class="folder-actions">
-                            <form method="POST" action="{{ url_for('main.rename_folder', folder_id=folder.id) }}"
-                                  onsubmit="var n=prompt('Rename folder to:','{{ folder.name }}'); if(!n){return false;} this.querySelector('input').value=n;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <input type="hidden" name="name" value="">
-                                <button type="submit" class="folder-action-btn" title="Rename">✏️</button>
-                            </form>
-                            <a href="{{ url_for('main.delete_folder', folder_id=folder.id) }}"
-                               class="folder-action-btn" title="Delete folder"
-                               onclick="return confirm('Delete folder \'{{ folder.name }}\'? Cards will be moved back to your collection.')">🗑️</a>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% endif %}
-            </div>
-
-            <!-- VIEW TOGGLE -->
-            <div class="view-toggle">
-                <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, view='all', folder='all') }}"
-                   class="view-btn {% if view_mode == 'all' %}active{% endif %}">🃏 All Cards</a>
-                <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, view='folders', folder='all') }}"
-                   class="view-btn {% if view_mode == 'folders' %}active{% endif %}">📁 Folders View</a>
-            </div>
-
-            <div class="section-header">
-                <div class="section-title">
-                    {% if view_mode == 'folders' and folder_filter != 'all' %}
-                        {% for folder in folders %}{% if folder.id|string == folder_filter %}📁 {{ folder.name }}{% endif %}{% endfor %}
-                    {% elif view_mode == 'folders' %}
-                        Folders View
-                    {% else %}
-                        My Collection
-                    {% endif %}
-                    <span>{{ cards|length }}</span>
-                </div>
-                <div style="display:flex; gap:10px;">
-                    <a href="{{ url_for('main.export_csv') }}" class="btn btn-export">📥 Export</a>
-                    <a href="{{ url_for('main.import_cards') }}" class="btn" style="background:#0f3460;">📤 Import</a>
-                    <a href="{{ url_for('main.add_card') }}" class="btn">+ Add Card</a>
-                </div>
-            </div>
-
-            <div class="filter-bar">
-                <div class="search-bar-wrapper">
-                    <input type="text" id="cardSearch" placeholder="🔍  Search by player, sport, year, manufacturer..." onkeyup="filterCards()">
-                </div>
-                <div class="filter-controls">
-                    <select onchange="applyFilter(this.value, '{{ sort_by }}', '{{ folder_filter }}')" class="filter-select">
-                        <option value="all" {% if sport_filter == 'all' %}selected{% endif %}>All Sports</option>
-                        <option value="Baseball" {% if sport_filter == 'Baseball' %}selected{% endif %}>⚾ Baseball</option>
-                        <option value="Basketball" {% if sport_filter == 'Basketball' %}selected{% endif %}>🏀 Basketball</option>
-                        <option value="Football" {% if sport_filter == 'Football' %}selected{% endif %}>🏈 Football</option>
-                        <option value="Hockey" {% if sport_filter == 'Hockey' %}selected{% endif %}>🏒 Hockey</option>
-                        <option value="Soccer" {% if sport_filter == 'Soccer' %}selected{% endif %}>⚽ Soccer</option>
-                        <option value="Other" {% if sport_filter == 'Other' %}selected{% endif %}>Other</option>
-                    </select>
-                    <select onchange="applyFilter('{{ sport_filter }}', this.value, '{{ folder_filter }}')" class="filter-select">
-                        <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Sort: Recent</option>
-                        <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Sort: Name</option>
-                        <option value="value_high" {% if sort_by == 'value_high' %}selected{% endif %}>Sort: Value High</option>
-                        <option value="value_low" {% if sort_by == 'value_low' %}selected{% endif %}>Sort: Value Low</option>
-                        <option value="profit_high" {% if sort_by == 'profit_high' %}selected{% endif %}>Sort: Profit High</option>
-                        <option value="profit_low" {% if sort_by == 'profit_low' %}selected{% endif %}>Sort: Profit Low</option>
-                    </select>
-                    <select onchange="toggleSold(this.value)" class="filter-select">
-                        <option value="hide">Hide Sold</option>
-                        <option value="show">Show Sold</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- FOLDERS VIEW MODE -->
-            {% if view_mode == 'folders' and folder_filter == 'all' %}
-                {% if folders %}
-                <div class="folder-view-grid">
-                    {% for folder in folders %}
-                    <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, view='folders', folder=folder.id) }}"
-                       class="folder-view-tile">
-                        <div class="folder-icon">📁</div>
-                        <div class="folder-name">{{ folder.name }}</div>
-                        <div class="folder-card-count">{{ folder.cards|length }} card{{ 's' if folder.cards|length != 1 }}</div>
-                    </a>
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                {% if unassigned_cards %}
-                <div class="unassigned-label">📋 Unassigned Cards ({{ unassigned_cards|length }})</div>
-                <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="select-all-row">
-                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
-                        <label for="selectAll">Select All</label>
-                    </div>
-                    <div class="bulk-toolbar" id="bulkToolbar">
-                        <label>Move <span id="selectedCount">0</span> selected cards to:</label>
-                        <select name="folder_id">
-                            <option value="">-- No Folder --</option>
-                            {% for folder in folders %}
-                                <option value="{{ folder.id }}">📁 {{ folder.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit">Apply</button>
-                    </div>
-                    <div class="card-grid">
-                        {% for card in unassigned_cards %}
-                        <div class="card-item" id="card-item-{{ card.id }}">
-                            <input type="checkbox" name="card_ids" value="{{ card.id }}"
-                                   class="card-checkbox" onchange="updateBulkToolbar()">
-                            {% if card.photo_filename %}
-                                <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
-                            {% else %}
-                                <div class="no-photo">No Photo</div>
-                            {% endif %}
-                            <div class="card-info">
-                                <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
-                                <p>{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
-                                <p>{{ card.condition }}</p>
-                                <div class="card-prices">
-                                    <span>Paid: ${{ "{:,.2f}".format(card.buy_price) }}</span>
-                                    {% if card.market_price %}
-                                        <span>Mkt: ${{ "{:,.2f}".format(card.market_price) }}</span>
-                                    {% endif %}
-                                </div>
-                                {% if card.profit_loss is not none %}
-                                    <p class="{% if card.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
-                                        {% if card.profit_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(card.profit_loss) }}
-                                    </p>
-                                {% endif %}
-                                <div class="card-actions">
-                                    <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn-search">🔍 Price</a>
-                                    <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn-search">✏️ Edit</a>
-                                    <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">🗑️</a>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </form>
-                {% else %}
-                <p style="color:#888; font-size:14px;">All cards are assigned to folders.</p>
-                {% endif %}
-
-            <!-- FOLDERS VIEW - INSIDE A FOLDER -->
-            {% elif view_mode == 'folders' and folder_filter != 'all' %}
-                <a href="{{ url_for('main.dashboard', view='folders', folder='all') }}"
-                   style="display:inline-block; margin-bottom:16px; font-size:14px; color:#e63946;">← Back to Folders</a>
-                <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="select-all-row">
-                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
-                        <label for="selectAll">Select All</label>
-                    </div>
-                    <div class="bulk-toolbar" id="bulkToolbar">
-                        <label>Move <span id="selectedCount">0</span> selected cards to:</label>
-                        <select name="folder_id">
-                            <option value="">-- No Folder --</option>
-                            {% for folder in folders %}
-                                <option value="{{ folder.id }}">📁 {{ folder.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit">Apply</button>
-                    </div>
-                    {% if cards %}
-                    <div class="card-grid">
-                        {% for card in cards %}
-                        <div class="card-item" id="card-item-{{ card.id }}">
-                            <input type="checkbox" name="card_ids" value="{{ card.id }}"
-                                   class="card-checkbox" onchange="updateBulkToolbar()">
-                            {% if card.photo_filename %}
-                                <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
-                            {% else %}
-                                <div class="no-photo">No Photo</div>
-                            {% endif %}
-                            <div class="card-info">
-                                <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
-                                <p>{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
-                                <p>{{ card.condition }}</p>
-                                <div class="card-prices">
-                                    <span>Paid: ${{ "{:,.2f}".format(card.buy_price) }}</span>
-                                    {% if card.market_price %}
-                                        <span>Mkt: ${{ "{:,.2f}".format(card.market_price) }}</span>
-                                    {% endif %}
-                                </div>
-                                {% if card.profit_loss is not none %}
-                                    <p class="{% if card.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
-                                        {% if card.profit_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(card.profit_loss) }}
-                                    </p>
-                                {% endif %}
-                                <div class="card-actions">
-                                    <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn-search">🔍 Price</a>
-                                    <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn-search">✏️ Edit</a>
-                                    <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">🗑️</a>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="empty-state"><p>No cards in this folder yet.</p></div>
-                    {% endif %}
-                </form>
-
-            <!-- ALL CARDS VIEW -->
-            {% else %}
-                {% if cards %}
-                <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="select-all-row">
-                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)">
-                        <label for="selectAll">Select All</label>
-                    </div>
-                    <div class="bulk-toolbar" id="bulkToolbar">
-                        <label>Move <span id="selectedCount">0</span> selected cards to:</label>
-                        <select name="folder_id">
-                            <option value="">-- No Folder --</option>
-                            {% for folder in folders %}
-                                <option value="{{ folder.id }}">📁 {{ folder.name }}</option>
-                            {% endfor %}
-                        </select>
-                        <button type="submit">Apply</button>
-                    </div>
-                    <div id="no-results" style="display:none;" class="empty-state">
-                        <p>No cards match your search.</p>
-                    </div>
-                    <div class="card-grid">
-                        {% for card in cards %}
-                        <div class="card-item" id="card-item-{{ card.id }}">
-                            <input type="checkbox" name="card_ids" value="{{ card.id }}"
-                                   class="card-checkbox" onchange="updateBulkToolbar()">
-                            {% if card.photo_filename %}
-                                <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}" alt="{{ card.player_name }}">
-                            {% else %}
-                                <div class="no-photo">No Photo</div>
-                            {% endif %}
-                            <div class="card-info">
-                                <h3><a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="card-link">{{ card.player_name }}</a></h3>
-                                <p>{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
-                                <p>{{ card.condition }}</p>
-                                {% if card.folder %}
-                                    <p style="font-size:12px; color:#888;">📁 {{ card.folder.name }}</p>
-                                {% endif %}
-                                <div class="card-prices">
-                                    <span>Paid: ${{ "{:,.2f}".format(card.buy_price) }}</span>
-                                    {% if card.market_price %}
-                                        <span>Mkt: ${{ "{:,.2f}".format(card.market_price) }}</span>
-                                    {% endif %}
-                                </div>
-                                {% if card.profit_loss is not none %}
-                                    <p class="{% if card.profit_loss >= 0 %}profit-text{% else %}loss-text{% endif %}">
-                                        {% if card.profit_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(card.profit_loss) }}
-                                    </p>
-                                {% endif %}
-                                <div class="card-actions">
-                                    <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="btn-search">🔍 Price</a>
-                                    <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="btn-search">✏️ Edit</a>
-                                    <a href="{{ url_for('main.delete_card', card_id=card.id) }}" class="btn-delete" onclick="return confirm('Delete this card?')">🗑️</a>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </form>
-                {% else %}
-                <div class="empty-state">
-                    <p>No cards in your collection yet.</p>
-                    <a href="{{ url_for('main.add_card') }}" class="btn">+ Add Your First Card</a>
-                </div>
-                {% endif %}
-            {% endif %}
-
         </div>
     </div>
 
-    <script>
-// Portfolio Charts
+    <!-- Portfolio Market Value Line Chart -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div class="flex items-center justify-between mb-5">
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700">Portfolio Market Value</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Estimated value over time</p>
+            </div>
+            <div class="flex gap-1" id="mvPeriodBtns">
+                <button type="button" onclick="setMVPeriod('1W', this)"
+                        class="mv-period-btn text-xs px-2.5 py-1 rounded-md font-medium transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-100">1W</button>
+                <button type="button" onclick="setMVPeriod('1M', this)"
+                        class="mv-period-btn text-xs px-2.5 py-1 rounded-md font-medium transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-100">1M</button>
+                <button type="button" onclick="setMVPeriod('3M', this)"
+                        class="mv-period-btn text-xs px-2.5 py-1 rounded-md font-medium transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-100">3M</button>
+                <button type="button" onclick="setMVPeriod('6M', this)"
+                        class="mv-period-btn text-xs px-2.5 py-1 rounded-md font-medium transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-100">6M</button>
+                <button type="button" onclick="setMVPeriod('1Y', this)"
+                        class="mv-period-btn text-xs px-2.5 py-1 rounded-md font-medium transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-100">1Y</button>
+                <button type="button" onclick="setMVPeriod('All', this)"
+                        class="mv-period-btn text-xs px-2.5 py-1 rounded-md font-medium transition-colors bg-indigo-600 text-white">All</button>
+            </div>
+        </div>
+        <div class="relative h-[250px]">
+            <canvas id="marketValueChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Portfolio Charts -->
+    {% if chart_sport_labels %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Cards by Sport</h4>
+            <canvas id="sportPieChart" height="200"></canvas>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Invested vs Value</h4>
+            <canvas id="investedChart" height="200"></canvas>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <h4 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Profit / Loss by Sport</h4>
+            <canvas id="plChart" height="200"></canvas>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Folders Management -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-semibold text-gray-700">Folders</h3>
+            <form method="POST" action="{{ url_for('main.create_folder') }}" class="flex gap-2">
+                <input type="text" name="name" placeholder="New folder name..." maxlength="100"
+                       class="text-sm border border-gray-200 rounded-lg px-3 py-1.5 w-44 focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <button type="submit"
+                        class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">
+                    + Create
+                </button>
+            </form>
+        </div>
+        {% if folders %}
+        <div class="flex flex-wrap gap-2">
+            {% for folder in folders %}
+            <div class="flex items-center gap-1">
+                <span class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-700">
+                    📁 {{ folder.name }}
+                    <span class="bg-gray-200 text-gray-600 text-xs font-bold rounded-full px-2 py-0.5">{{ folder.cards|length }}</span>
+                </span>
+                <div class="flex gap-0.5">
+                    <form method="POST" action="{{ url_for('main.rename_folder', folder_id=folder.id) }}"
+                          onsubmit="var n=prompt('Rename folder to:','{{ folder.name }}'); if(!n){return false;} this.querySelector('input').value=n;">
+                        <input type="hidden" name="name" value="">
+                        <button type="submit" class="text-gray-400 hover:text-gray-600 p-1 text-xs" title="Rename">✏️</button>
+                    </form>
+                    <a href="{{ url_for('main.delete_folder', folder_id=folder.id) }}"
+                       class="text-gray-400 hover:text-red-500 p-1 text-xs" title="Delete folder"
+                       onclick="return confirm('Delete folder \'{{ folder.name }}\'? Cards will be moved back to your collection.')">🗑️</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- View Toggle + Section Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div class="flex items-center gap-3">
+            <div class="flex rounded-lg border border-gray-200 overflow-hidden text-sm">
+                <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, view='all', folder='all') }}"
+                   class="px-4 py-2 font-medium transition-colors
+                          {% if view_mode == 'all' %}bg-gray-900 text-white{% else %}bg-white text-gray-600 hover:bg-gray-50{% endif %}">
+                    All Cards
+                </a>
+                <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, view='folders', folder='all') }}"
+                   class="px-4 py-2 font-medium border-l border-gray-200 transition-colors
+                          {% if view_mode == 'folders' %}bg-gray-900 text-white{% else %}bg-white text-gray-600 hover:bg-gray-50{% endif %}">
+                    Folders
+                </a>
+            </div>
+            <span class="text-sm text-gray-500">
+                {% if view_mode == 'folders' and folder_filter != 'all' %}
+                    {% for folder in folders %}{% if folder.id|string == folder_filter %}📁 {{ folder.name }}{% endif %}{% endfor %}
+                {% elif view_mode == 'folders' %}
+                    Folders View
+                {% else %}
+                    My Collection
+                {% endif %}
+                <span class="ml-1 bg-gray-100 text-gray-600 text-xs font-bold rounded-full px-2 py-0.5">{{ cards|length }}</span>
+            </span>
+        </div>
+        <div class="flex gap-2">
+            <a href="{{ url_for('main.export_csv') }}"
+               class="text-sm border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                Export CSV
+            </a>
+            <a href="{{ url_for('main.import_cards') }}"
+               class="text-sm border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                Import
+            </a>
+            <a href="{{ url_for('main.add_card') }}"
+               class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors">
+                + Add Card
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-6">
+        <input type="text" id="cardSearch" placeholder="Search by player, sport, year, manufacturer..."
+               onkeyup="filterCards()"
+               class="flex-1 text-sm border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+        <div class="flex gap-2">
+            <select title="Filter by sport" onchange="applyFilter(this.value, '{{ sort_by }}', '{{ folder_filter }}')"
+                    class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="all" {% if sport_filter == 'all' %}selected{% endif %}>All Sports</option>
+                <option value="Baseball" {% if sport_filter == 'Baseball' %}selected{% endif %}>Baseball</option>
+                <option value="Basketball" {% if sport_filter == 'Basketball' %}selected{% endif %}>Basketball</option>
+                <option value="Football" {% if sport_filter == 'Football' %}selected{% endif %}>Football</option>
+                <option value="Hockey" {% if sport_filter == 'Hockey' %}selected{% endif %}>Hockey</option>
+                <option value="Soccer" {% if sport_filter == 'Soccer' %}selected{% endif %}>Soccer</option>
+                <option value="Other" {% if sport_filter == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+            <select title="Sort cards" onchange="applyFilter('{{ sport_filter }}', this.value, '{{ folder_filter }}')"
+                    class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="date" {% if sort_by == 'date' %}selected{% endif %}>Recent</option>
+                <option value="name" {% if sort_by == 'name' %}selected{% endif %}>Name</option>
+                <option value="value_high" {% if sort_by == 'value_high' %}selected{% endif %}>Value ↓</option>
+                <option value="value_low" {% if sort_by == 'value_low' %}selected{% endif %}>Value ↑</option>
+                <option value="profit_high" {% if sort_by == 'profit_high' %}selected{% endif %}>Profit ↓</option>
+                <option value="profit_low" {% if sort_by == 'profit_low' %}selected{% endif %}>Profit ↑</option>
+            </select>
+            <select title="Show or hide sold cards" onchange="toggleSold(this.value)"
+                    class="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                <option value="hide">Hide Sold</option>
+                <option value="show">Show Sold</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- ==================== FOLDERS VIEW - All Folders ==================== -->
+    {% if view_mode == 'folders' and folder_filter == 'all' %}
+        {% if folders %}
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+            {% for folder in folders %}
+            <a href="{{ url_for('main.dashboard', sport=sport_filter, sort=sort_by, view='folders', folder=folder.id) }}"
+               class="bg-white border border-gray-200 rounded-xl p-5 text-center hover:border-indigo-300 hover:shadow-md transition-all">
+                <div class="text-3xl mb-2">📁</div>
+                <div class="text-sm font-semibold text-gray-800">{{ folder.name }}</div>
+                <div class="text-xs text-gray-400 mt-1">{{ folder.cards|length }} card{{ 's' if folder.cards|length != 1 }}</div>
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if unassigned_cards %}
+        <div class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+            Unassigned Cards ({{ unassigned_cards|length }})
+        </div>
+        <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
+            <div class="flex items-center gap-2 mb-3 text-sm text-gray-500">
+                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
+                       class="w-4 h-4 accent-indigo-600 cursor-pointer">
+                <label for="selectAll" class="cursor-pointer">Select All</label>
+            </div>
+            <div id="bulkToolbar"
+                 class="hidden flex items-center gap-3 bg-gray-900 text-white px-4 py-3 rounded-xl mb-4 flex-wrap">
+                <span class="text-sm font-medium">Move <span id="selectedCount">0</span> selected to:</span>
+                <select name="folder_id" title="Move to folder" class="text-sm rounded-lg px-3 py-1.5 text-gray-900 border-none">
+                    <option value="">-- No Folder --</option>
+                    {% for folder in folders %}
+                        <option value="{{ folder.id }}">📁 {{ folder.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit"
+                        class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-medium">
+                    Apply
+                </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {% for card in unassigned_cards %}
+                <div class="card-item bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden relative" id="card-item-{{ card.id }}">
+                    <input type="checkbox" name="card_ids" value="{{ card.id }}"
+                           aria-label="Select {{ card.player_name }}"
+                           class="card-checkbox absolute top-2 left-2 w-4 h-4 accent-indigo-600 z-10 cursor-pointer"
+                           onchange="updateBulkToolbar()">
+                    {% if card.photo_filename %}
+                        <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}"
+                             alt="{{ card.player_name }}" class="w-full h-40 object-cover">
+                    {% else %}
+                        <div class="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No Photo</div>
+                    {% endif %}
+                    <div class="p-3">
+                        <h3 class="font-semibold text-gray-900 text-sm truncate">
+                            <a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="hover:text-indigo-600">{{ card.player_name }}</a>
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
+                        <p class="text-xs text-gray-400">{{ card.condition }}</p>
+                        <div class="flex gap-1.5 mt-2 flex-wrap">
+                            <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Paid: ${{ "{:,.2f}".format(card.buy_price) }}</span>
+                            {% if card.market_price %}
+                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">Mkt: ${{ "{:,.2f}".format(card.market_price) }}</span>
+                            {% endif %}
+                        </div>
+                        {% if card.profit_loss is not none %}
+                            <p class="text-xs font-semibold mt-1 {% if card.profit_loss >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                                {% if card.profit_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(card.profit_loss) }}
+                            </p>
+                        {% endif %}
+                        <div class="flex gap-3 mt-3">
+                            <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Price</a>
+                            <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="text-xs text-gray-500 hover:text-gray-700 font-medium">Edit</a>
+                            <a href="{{ url_for('main.delete_card', card_id=card.id) }}"
+                               class="text-xs text-red-400 hover:text-red-600 font-medium ml-auto"
+                               onclick="return confirm('Delete this card?')">Delete</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </form>
+        {% else %}
+        <p class="text-sm text-gray-400">All cards are assigned to folders.</p>
+        {% endif %}
+
+    <!-- ==================== FOLDERS VIEW - Inside a Folder ==================== -->
+    {% elif view_mode == 'folders' and folder_filter != 'all' %}
+        <a href="{{ url_for('main.dashboard', view='folders', folder='all') }}"
+           class="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800 mb-5">
+            ← Back to Folders
+        </a>
+        <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
+            <div class="flex items-center gap-2 mb-3 text-sm text-gray-500">
+                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
+                       class="w-4 h-4 accent-indigo-600 cursor-pointer">
+                <label for="selectAll" class="cursor-pointer">Select All</label>
+            </div>
+            <div id="bulkToolbar"
+                 class="hidden flex items-center gap-3 bg-gray-900 text-white px-4 py-3 rounded-xl mb-4 flex-wrap">
+                <span class="text-sm font-medium">Move <span id="selectedCount">0</span> selected to:</span>
+                <select name="folder_id" title="Move to folder" class="text-sm rounded-lg px-3 py-1.5 text-gray-900 border-none">
+                    <option value="">-- No Folder --</option>
+                    {% for folder in folders %}
+                        <option value="{{ folder.id }}">📁 {{ folder.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit"
+                        class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-medium">
+                    Apply
+                </button>
+            </div>
+            {% if cards %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {% for card in cards %}
+                <div class="card-item bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden relative" id="card-item-{{ card.id }}">
+                    <input type="checkbox" name="card_ids" value="{{ card.id }}"
+                           aria-label="Select {{ card.player_name }}"
+                           class="card-checkbox absolute top-2 left-2 w-4 h-4 accent-indigo-600 z-10 cursor-pointer"
+                           onchange="updateBulkToolbar()">
+                    {% if card.photo_filename %}
+                        <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}"
+                             alt="{{ card.player_name }}" class="w-full h-40 object-cover">
+                    {% else %}
+                        <div class="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No Photo</div>
+                    {% endif %}
+                    <div class="p-3">
+                        <h3 class="font-semibold text-gray-900 text-sm truncate">
+                            <a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="hover:text-indigo-600">{{ card.player_name }}</a>
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
+                        <p class="text-xs text-gray-400">{{ card.condition }}</p>
+                        <div class="flex gap-1.5 mt-2 flex-wrap">
+                            <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Paid: ${{ "{:,.2f}".format(card.buy_price) }}</span>
+                            {% if card.market_price %}
+                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">Mkt: ${{ "{:,.2f}".format(card.market_price) }}</span>
+                            {% endif %}
+                        </div>
+                        {% if card.profit_loss is not none %}
+                            <p class="text-xs font-semibold mt-1 {% if card.profit_loss >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                                {% if card.profit_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(card.profit_loss) }}
+                            </p>
+                        {% endif %}
+                        <div class="flex gap-3 mt-3">
+                            <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Price</a>
+                            <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="text-xs text-gray-500 hover:text-gray-700 font-medium">Edit</a>
+                            <a href="{{ url_for('main.delete_card', card_id=card.id) }}"
+                               class="text-xs text-red-400 hover:text-red-600 font-medium ml-auto"
+                               onclick="return confirm('Delete this card?')">Delete</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-16">
+                <p class="text-sm text-gray-400">No cards in this folder yet.</p>
+            </div>
+            {% endif %}
+        </form>
+
+    <!-- ==================== ALL CARDS VIEW ==================== -->
+    {% else %}
+        {% if cards %}
+        <form method="POST" action="{{ url_for('main.bulk_assign_folder') }}" id="bulkForm">
+            <div class="flex items-center gap-2 mb-3 text-sm text-gray-500">
+                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"
+                       class="w-4 h-4 accent-indigo-600 cursor-pointer">
+                <label for="selectAll" class="cursor-pointer">Select All</label>
+            </div>
+            <div id="bulkToolbar"
+                 class="hidden flex items-center gap-3 bg-gray-900 text-white px-4 py-3 rounded-xl mb-4 flex-wrap">
+                <span class="text-sm font-medium">Move <span id="selectedCount">0</span> selected to:</span>
+                <select name="folder_id" title="Move to folder" class="text-sm rounded-lg px-3 py-1.5 text-gray-900 border-none">
+                    <option value="">-- No Folder --</option>
+                    {% for folder in folders %}
+                        <option value="{{ folder.id }}">📁 {{ folder.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit"
+                        class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg font-medium">
+                    Apply
+                </button>
+            </div>
+            <div id="no-results" class="hidden text-center py-16">
+                <p class="text-sm text-gray-400">No cards match your search.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {% for card in cards %}
+                <div class="card-item bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden relative" id="card-item-{{ card.id }}">
+                    <input type="checkbox" name="card_ids" value="{{ card.id }}"
+                           aria-label="Select {{ card.player_name }}"
+                           class="card-checkbox absolute top-2 left-2 w-4 h-4 accent-indigo-600 z-10 cursor-pointer"
+                           onchange="updateBulkToolbar()">
+                    {% if card.photo_filename %}
+                        <img src="{{ url_for('static', filename='uploads/' + card.photo_filename) }}"
+                             alt="{{ card.player_name }}" class="w-full h-40 object-cover">
+                    {% else %}
+                        <div class="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400 text-xs">No Photo</div>
+                    {% endif %}
+                    <div class="p-3">
+                        <h3 class="font-semibold text-gray-900 text-sm truncate">
+                            <a href="{{ url_for('main.card_detail', card_id=card.id) }}" class="hover:text-indigo-600">{{ card.player_name }}</a>
+                        </h3>
+                        <p class="text-xs text-gray-400 mt-0.5">{{ card.year }} {{ card.manufacturer }} · {{ card.sport }}</p>
+                        <p class="text-xs text-gray-400">{{ card.condition }}</p>
+                        {% if card.folder %}
+                            <p class="text-xs text-gray-300 mt-0.5">📁 {{ card.folder.name }}</p>
+                        {% endif %}
+                        <div class="flex gap-1.5 mt-2 flex-wrap">
+                            <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Paid: ${{ "{:,.2f}".format(card.buy_price) }}</span>
+                            {% if card.market_price %}
+                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">Mkt: ${{ "{:,.2f}".format(card.market_price) }}</span>
+                            {% endif %}
+                        </div>
+                        {% if card.profit_loss is not none %}
+                            <p class="text-xs font-semibold mt-1 {% if card.profit_loss >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                                {% if card.profit_loss >= 0 %}+{% endif %}${{ "{:,.2f}".format(card.profit_loss) }}
+                            </p>
+                        {% endif %}
+                        <div class="flex gap-3 mt-3">
+                            <a href="{{ url_for('main.search_price', card_id=card.id) }}" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Price</a>
+                            <a href="{{ url_for('main.edit_card', card_id=card.id) }}" class="text-xs text-gray-500 hover:text-gray-700 font-medium">Edit</a>
+                            <a href="{{ url_for('main.delete_card', card_id=card.id) }}"
+                               class="text-xs text-red-400 hover:text-red-600 font-medium ml-auto"
+                               onclick="return confirm('Delete this card?')">Delete</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </form>
+        {% else %}
+        <div class="text-center py-20">
+            <p class="text-gray-400 text-sm mb-4">No cards in your collection yet.</p>
+            <a href="{{ url_for('main.add_card') }}"
+               class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors">
+                + Add Your First Card
+            </a>
+        </div>
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
 {% if chart_sport_labels %}
 const sportLabels = {{ chart_sport_labels | tojson }};
 const sportCounts = {{ chart_sport_counts | tojson }};
 const sportInvested = {{ chart_sport_invested | tojson }};
 const sportValue = {{ chart_sport_value | tojson }};
 const sportPL = sportValue.map((v, i) => Math.round((v - sportInvested[i]) * 100) / 100);
-const chartColors = ['#e94560','#0f3460','#27ae60','#f39c12','#9b59b6','#1abc9c','#e67e22'];
+const chartColors = ['#6366f1', '#0f3460', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#f97316'];
 
-// Cards by Sport Pie
 new Chart(document.getElementById('sportPieChart'), {
     type: 'doughnut',
     data: {
@@ -510,26 +466,25 @@ new Chart(document.getElementById('sportPieChart'), {
     }
 });
 
-// Invested vs Value Bar
 new Chart(document.getElementById('investedChart'), {
     type: 'bar',
     data: {
         labels: sportLabels,
         datasets: [
-            { label: 'Invested', data: sportInvested, backgroundColor: 'rgba(15,52,96,0.8)', borderRadius: 4 },
-            { label: 'Value', data: sportValue, backgroundColor: 'rgba(233,69,96,0.8)', borderRadius: 4 }
+            { label: 'Invested', data: sportInvested, backgroundColor: 'rgba(99,102,241,0.8)', borderRadius: 4 },
+            { label: 'Value', data: sportValue, backgroundColor: 'rgba(16,185,129,0.8)', borderRadius: 4 }
         ]
     },
     options: {
         responsive: true,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } },
+        plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 11 } } },
             tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.y.toFixed(2) } }
         },
         scales: { y: { ticks: { callback: v => '$' + v } } }
     }
 });
 
-// Profit/Loss by Sport
 new Chart(document.getElementById('plChart'), {
     type: 'bar',
     data: {
@@ -537,19 +492,163 @@ new Chart(document.getElementById('plChart'), {
         datasets: [{
             label: 'Profit / Loss',
             data: sportPL,
-            backgroundColor: sportPL.map(v => v >= 0 ? 'rgba(46,204,113,0.8)' : 'rgba(233,69,96,0.8)'),
+            backgroundColor: sportPL.map(v => v >= 0 ? 'rgba(16,185,129,0.8)' : 'rgba(239,68,68,0.8)'),
             borderRadius: 4
         }]
     },
     options: {
         responsive: true,
-        plugins: { legend: { display: false },
+        plugins: {
+            legend: { display: false },
             tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.y.toFixed(2) } }
         },
         scales: { y: { ticks: { callback: v => '$' + v } } }
     }
 });
 {% endif %}
+
+// TODO: replace with real historical data
+(function () {
+    // Fixed placeholder range: $500 → $2,400 over 365 days.
+    // Uses a seeded LCG so the curve is identical on every page load.
+    const DAYS = 365, START = 500, END = 2400;
+
+    function seededRand(seed) {
+        let s = seed >>> 0;
+        return function () {
+            s = Math.imul(s, 1664525) + 1013904223 >>> 0;
+            return s / 0x100000000;
+        };
+    }
+    const rand = seededRand(7);
+
+    // Build master daily values with upward drift + bounded random walk
+    const masterValues = [];
+    let val = START;
+    const drift = (END - START) / DAYS;
+    for (let i = 0; i < DAYS; i++) {
+        val = Math.max(START * 0.85, val + drift + (rand() - 0.46) * val * 0.016);
+        masterValues.push(Math.round(val * 100) / 100);
+    }
+    masterValues[DAYS - 1] = END;
+
+    // Build master date labels (Date objects, one per day going back 365 days)
+    const today = new Date();
+    const masterDates = Array.from({ length: DAYS }, (_, i) => {
+        const d = new Date(today);
+        d.setDate(today.getDate() - (DAYS - 1 - i));
+        return d;
+    });
+
+    // Slice master data by period, sampling every `step` points for readability
+    function buildPeriod(daysBack, step, fmt) {
+        const start = Math.max(0, DAYS - daysBack);
+        const vals  = masterValues.slice(start);
+        const dates = masterDates.slice(start);
+        const data = [], labels = [];
+        for (let i = 0; i < vals.length; i += step) {
+            data.push(vals[i]);
+            labels.push(dates[i].toLocaleDateString('en-US', fmt));
+        }
+        // Always ensure the last real point is included
+        if (data[data.length - 1] !== vals[vals.length - 1]) {
+            data.push(vals[vals.length - 1]);
+            labels.push(dates[dates.length - 1].toLocaleDateString('en-US', fmt));
+        }
+        return { data, labels };
+    }
+
+    const DAY_FMT   = { month: 'short', day: 'numeric' };
+    const MONTH_FMT = { month: 'short', year: '2-digit' };
+
+    const periods = {
+        '1W':  buildPeriod(7,   1, DAY_FMT),
+        '1M':  buildPeriod(30,  1, DAY_FMT),
+        '3M':  buildPeriod(90,  3, DAY_FMT),
+        '6M':  buildPeriod(180, 5, DAY_FMT),
+        '1Y':  buildPeriod(365, 7, MONTH_FMT),
+        'All': buildPeriod(365, 7, MONTH_FMT),
+    };
+
+    const mvChart = new Chart(document.getElementById('marketValueChart'), {
+        type: 'line',
+        data: {
+            labels: periods['All'].labels,
+            datasets: [{
+                label: 'Est. Market Value',
+                data: periods['All'].data,
+                borderColor: '#6366f1',
+                borderWidth: 2.5,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: '#6366f1',
+                pointHoverBorderColor: '#fff',
+                pointHoverBorderWidth: 2,
+                fill: true,
+                backgroundColor: function (context) {
+                    const { ctx: c, chartArea } = context.chart;
+                    if (!chartArea) return 'rgba(99,102,241,0.10)';
+                    const grad = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                    grad.addColorStop(0, 'rgba(99,102,241,0.22)');
+                    grad.addColorStop(1, 'rgba(99,102,241,0.00)');
+                    return grad;
+                },
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e1b4b',
+                    titleColor: '#a5b4fc',
+                    titleFont: { size: 12, weight: '500' },
+                    bodyColor: '#e0e7ff',
+                    bodyFont: { size: 13, weight: '600' },
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        title: ctx => ctx[0].label,
+                        label: ctx => ' $' + ctx.parsed.y.toLocaleString('en-US', {
+                            minimumFractionDigits: 2, maximumFractionDigits: 2
+                        })
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    border: { display: false },
+                    ticks: { font: { size: 11 }, color: '#9ca3af', maxTicksLimit: 8, maxRotation: 0 }
+                },
+                y: {
+                    min: 0,
+                    grid: { color: 'rgba(0,0,0,0.04)' },
+                    border: { display: false },
+                    ticks: {
+                        font: { size: 11 },
+                        color: '#9ca3af',
+                        maxTicksLimit: 5,
+                        callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0))
+                    }
+                }
+            }
+        }
+    });
+
+    window.setMVPeriod = function (period, btn) {
+        mvChart.data.labels = periods[period].labels;
+        mvChart.data.datasets[0].data = periods[period].data;
+        mvChart.update('active');
+        document.querySelectorAll('.mv-period-btn').forEach(b => {
+            b.className = 'mv-period-btn text-xs px-2.5 py-1 rounded-md font-medium transition-colors text-gray-500 hover:text-gray-700 hover:bg-gray-100';
+        });
+        btn.className = 'mv-period-btn text-xs px-2.5 py-1 rounded-md font-medium transition-colors bg-indigo-600 text-white';
+    };
+}());
 
 function filterCards() {
     const input = document.getElementById('cardSearch').value.toLowerCase().trim();
@@ -561,7 +660,7 @@ function filterCards() {
         else { card.style.display = 'none'; }
     });
     const noResults = document.getElementById('no-results');
-    if (noResults) noResults.style.display = (visibleCount === 0 && input.length > 0) ? 'block' : 'none';
+    if (noResults) noResults.classList.toggle('hidden', !(visibleCount === 0 && input.length > 0));
 }
 
 function applyFilter(sport, sort, folder) {
@@ -573,7 +672,8 @@ function toggleSelectAll(checkbox) {
     const checkboxes = document.querySelectorAll('.card-checkbox');
     checkboxes.forEach(cb => {
         cb.checked = checkbox.checked;
-        cb.closest('.card-item').classList.toggle('selected', checkbox.checked);
+        cb.closest('.card-item').classList.toggle('ring-2', checkbox.checked);
+        cb.closest('.card-item').classList.toggle('ring-indigo-400', checkbox.checked);
     });
     updateBulkToolbar();
 }
@@ -584,9 +684,10 @@ function updateBulkToolbar() {
     const toolbar = document.getElementById('bulkToolbar');
     const countEl = document.getElementById('selectedCount');
     if (countEl) countEl.textContent = count;
-    if (toolbar) toolbar.classList.toggle('visible', count > 0);
+    if (toolbar) { if (count > 0) toolbar.classList.remove('hidden'); else toolbar.classList.add('hidden'); }
     document.querySelectorAll('.card-checkbox').forEach(cb => {
-        cb.closest('.card-item').classList.toggle('selected', cb.checked);
+        cb.closest('.card-item').classList.toggle('ring-2', cb.checked);
+        cb.closest('.card-item').classList.toggle('ring-indigo-400', cb.checked);
     });
     const all = document.querySelectorAll('.card-checkbox');
     const selectAll = document.getElementById('selectAll');
@@ -595,29 +696,5 @@ function updateBulkToolbar() {
         selectAll.checked = count === all.length && all.length > 0;
     }
 }
-    </script>
-<script>
-let inactivityTime = 0;
-const warningTime = 25 * 60; // 25 minutes
-const logoutTime = 30 * 60;  // 30 minutes
-let warned = false;
-
-const timer = setInterval(() => {
-    inactivityTime++;
-    if (inactivityTime >= logoutTime) {
-        window.location.href = "{{ url_for('auth.logout') }}";
-    } else if (inactivityTime >= warningTime && !warned) {
-        warned = true;
-        alert('You will be logged out in 5 minutes due to inactivity.');
-    }
-}, 1000);
-
-['mousemove','keypress','click','scroll','touchstart'].forEach(event => {
-    document.addEventListener(event, () => {
-        inactivityTime = 0;
-        warned = false;
-    });
-});
-</script>   
-</body>
-</html>
+</script>
+{% endblock %}

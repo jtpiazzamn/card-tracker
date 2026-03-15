@@ -1,196 +1,168 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <title>CardLedger - Analytics</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+{% extends 'base.html' %}
+
+{% block title %}Analytics — CardLedger{% endblock %}
+
+{% block head %}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        .analytics-wrapper { background: #f0f2f5; min-height: calc(100vh - 65px); padding: 30px 0; overflow-x: hidden; }
-        .analytics-container { max-width: 1200px; margin: 0 auto; padding: 0 25px; width: 100%; box-sizing: border-box; }
-        .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-        .analytics-card { background: white; border-radius: 12px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #eee; }
-        .analytics-card h3 { font-family: 'Oswald', sans-serif; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: #1a1a2e; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #e94560; }
-        .analytics-card.full-width { grid-column: 1 / -1; }
-        .roi-big { font-family: 'Oswald', sans-serif; font-size: 64px; font-weight: 700; text-align: center; padding: 20px 0; }
-        .roi-big.profit { color: #27ae60; }
-        .roi-big.loss { color: #e94560; }
-        .roi-sub { text-align: center; color: #888; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
-        .top-cards-list { list-style: none; }
-        .top-cards-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-        .top-cards-list li:last-child { border-bottom: none; }
-        .top-card-name { font-weight: 600; color: #1a1a2e; }
-        .top-card-sub { font-size: 11px; color: #999; margin-top: 2px; }
-        .top-card-value { font-family: 'Oswald', sans-serif; font-size: 18px; font-weight: 700; }
-        .top-card-value.profit { color: #27ae60; }
-        .top-card-value.loss { color: #e94560; }
-        .rank-badge { width: 26px; height: 26px; border-radius: 50%; background: #1a1a2e; color: white; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-right: 12px; }
-        .rank-badge.gold { background: #f39c12; }
-        .rank-badge.silver { background: #95a5a6; }
-        .rank-badge.bronze { background: #e67e22; }
-        .card-rank-left { display: flex; align-items: center; }
-        .stat-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
-        .stat-row:last-child { border-bottom: none; }
-        .stat-row-label { color: #666; }
-        .stat-row-value { font-weight: 700; color: #1a1a2e; }
-        @media (max-width: 768px) {
-            .analytics-grid { grid-template-columns: 1fr; }
-            .analytics-card.full-width { grid-column: 1; }
-            .roi-big { font-size: 48px; }
-        }
-    </style>
-</head>
-<body>
-    <nav>
-        <h1>Card<span>Ledger</span></h1>
-        <div class="nav-right">
-            <span>Welcome, {{ current_user.username }}</span>
-            {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
+{% endblock %}
+
+{% block content %}
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-xl font-semibold text-gray-900">Analytics</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Portfolio performance overview</p>
+    </div>
+
+    <!-- Summary Stat Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <!-- ROI — featured card -->
+        <div class="col-span-2 md:col-span-1 bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col items-center justify-center text-center">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">Overall ROI</div>
+            {% if total_invested > 0 %}
+                <div class="text-4xl font-bold {% if roi >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                    {% if roi >= 0 %}+{% endif %}{{ "%.1f"|format(roi) }}%
+                </div>
+                <div class="text-xs text-gray-400 mt-1">on ${{ "{:,.2f}".format(total_invested) }} invested</div>
+            {% else %}
+                <div class="text-4xl font-bold text-gray-200">—</div>
+                <div class="text-xs text-gray-400 mt-1">No cards yet</div>
             {% endif %}
-            <a href="{{ url_for('main.dashboard') }}" style="background:#0f3460;">Dashboard</a>
-            <a href="{{ url_for('main.watchlist') }}" style="background:#0f3460;">Watchlist</a>
-            <a href="{{ url_for('auth.logout') }}">Logout</a>
         </div>
-    </nav>
 
-    <div class="analytics-wrapper">
-        <div class="analytics-container">
-            <div style="margin-bottom:24px;">
-                <h2 style="font-family:'Oswald',sans-serif; font-size:28px; color:#1a1a2e; text-transform:uppercase; letter-spacing:1px;">📊 Analytics</h2>
-                <p style="color:#888; font-size:14px; margin-top:4px;">Portfolio performance overview</p>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Total Cards</div>
+            <div class="text-2xl font-bold text-gray-900 mt-2">{{ total_cards }}</div>
+            <div class="text-xs text-gray-400 mt-0.5">{{ cards_sold }} sold</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Est. Market Value</div>
+            <div class="text-2xl font-bold text-gray-900 mt-2">${{ "{:,.2f}".format(est_market_value) }}</div>
+            <div class="text-xs text-gray-400 mt-0.5">Paid ${{ "{:,.2f}".format(total_invested) }}</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+            <div class="text-xs font-medium text-gray-400 uppercase tracking-wide">Unrealized G/L</div>
+            <div class="text-2xl font-bold mt-2 {% if unrealized >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                {% if unrealized >= 0 %}+{% endif %}${{ "{:,.2f}".format(unrealized) }}
             </div>
-
-            <div class="analytics-grid">
-
-                <!-- Overall ROI -->
-                <div class="analytics-card">
-                    <h3>Overall ROI</h3>
-                    {% if total_invested > 0 %}
-                        <div class="roi-big {% if roi >= 0 %}profit{% else %}loss{% endif %}">
-                            {% if roi >= 0 %}+{% endif %}{{ "%.1f"|format(roi) }}%
-                        </div>
-                        <div class="roi-sub">on ${{ "{:,.2f}".format(total_invested) }} invested</div>
-                    {% else %}
-                        <div class="roi-big" style="color:#ccc;">—</div>
-                        <div class="roi-sub">No cards in collection</div>
-                    {% endif %}
-                </div>
-
-                <!-- Portfolio Summary -->
-                <div class="analytics-card">
-                    <h3>Portfolio Summary</h3>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Total Cards</span>
-                        <span class="stat-row-value">{{ total_cards }}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Total Invested</span>
-                        <span class="stat-row-value">${{ "{:,.2f}".format(total_invested) }}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Est. Market Value</span>
-                        <span class="stat-row-value">${{ "{:,.2f}".format(est_market_value) }}</span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Realized Gains</span>
-                        <span class="stat-row-value" style="color:{% if realized_gains >= 0 %}#27ae60{% else %}#e94560{% endif %}">
-                            {% if realized_gains >= 0 %}+{% endif %}${{ "{:,.2f}".format(realized_gains) }}
-                        </span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Unrealized Gain/Loss</span>
-                        <span class="stat-row-value" style="color:{% if unrealized >= 0 %}#27ae60{% else %}#e94560{% endif %}">
-                            {% if unrealized >= 0 %}+{% endif %}${{ "{:,.2f}".format(unrealized) }}
-                        </span>
-                    </div>
-                    <div class="stat-row">
-                        <span class="stat-row-label">Cards Sold</span>
-                        <span class="stat-row-value">{{ cards_sold }}</span>
-                    </div>
-                </div>
-
-                <!-- Profit by Sport -->
-                <div class="analytics-card">
-                    <h3>Profit / Loss by Sport</h3>
-                    <canvas id="sportChart" height="220"></canvas>
-                </div>
-
-                <!-- Collection by Sport -->
-                <div class="analytics-card">
-                    <h3>Collection Breakdown</h3>
-                    <canvas id="breakdownChart" height="220"></canvas>
-                </div>
-
-                <!-- Top Gainers -->
-                <div class="analytics-card">
-                    <h3>🏆 Top 5 Gainers</h3>
-                    {% if top_gainers %}
-                    <ul class="top-cards-list">
-                        {% for card in top_gainers %}
-                        <li>
-                            <div class="card-rank-left">
-                                <div class="rank-badge {% if loop.index == 1 %}gold{% elif loop.index == 2 %}silver{% elif loop.index == 3 %}bronze{% endif %}">{{ loop.index }}</div>
-                                <div>
-                                    <div class="top-card-name"><a href="{{ url_for('main.card_detail', card_id=card.id) }}" style="color:#1a1a2e;text-decoration:none;">{{ card.player_name }}</a></div>
-                                    <div class="top-card-sub">{{ card.year or '' }} {{ card.manufacturer or '' }}</div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="top-card-value profit">+${{ "{:,.2f}".format(card.profit_loss) }}</div>
-                                <div style="font-size:11px;color:#27ae60;text-align:right;">+{{ "%.0f"|format((card.profit_loss / card.buy_price) * 100) }}%</div>
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                        <p style="color:#999;font-size:14px;text-align:center;padding:20px;">No profit data yet</p>
-                    {% endif %}
-                </div>
-
-                <!-- Top Losers -->
-                <div class="analytics-card">
-                    <h3>📉 Top 5 Losers</h3>
-                    {% if top_losers %}
-                    <ul class="top-cards-list">
-                        {% for card in top_losers %}
-                        <li>
-                            <div class="card-rank-left">
-                                <div class="rank-badge" style="background:#e94560;">{{ loop.index }}</div>
-                                <div>
-                                    <div class="top-card-name"><a href="{{ url_for('main.card_detail', card_id=card.id) }}" style="color:#1a1a2e;text-decoration:none;">{{ card.player_name }}</a></div>
-                                    <div class="top-card-sub">{{ card.year or '' }} {{ card.manufacturer or '' }}</div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="top-card-value loss">${{ "{:,.2f}".format(card.profit_loss) }}</div>
-                                <div style="font-size:11px;color:#e94560;text-align:right;">{{ "%.0f"|format((card.profit_loss / card.buy_price) * 100) }}%</div>
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                        <p style="color:#999;font-size:14px;text-align:center;padding:20px;">No loss data yet</p>
-                    {% endif %}
-                </div>
-
-                <!-- ROI by Sport -->
-                <div class="analytics-card full-width">
-                    <h3>ROI % by Sport</h3>
-                    <canvas id="roiChart" height="80"></canvas>
-                </div>
-
+            <div class="text-xs mt-0.5 {% if realized_gains >= 0 %}text-green-500{% else %}text-red-400{% endif %}">
+                {% if realized_gains >= 0 %}+{% endif %}${{ "{:,.2f}".format(realized_gains) }} realized
             </div>
         </div>
     </div>
 
+    <!-- Charts Row 1: P/L by Sport + Collection Breakdown -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Profit / Loss by Sport</h3>
+            <div class="relative h-[220px]">
+                <canvas id="sportChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Collection Breakdown</h3>
+            <div class="relative h-[220px]">
+                <canvas id="breakdownChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Gainers + Top Losers -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+        <!-- Top Gainers -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">🏆 Top 5 Gainers</h3>
+            {% if top_gainers %}
+            <ul class="divide-y divide-gray-50">
+                {%- for card in top_gainers %}
+                <li class="flex items-center justify-between py-2.5">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center text-white
+                                     {% if loop.index == 1 %}bg-amber-400
+                                     {% elif loop.index == 2 %}bg-gray-400
+                                     {% elif loop.index == 3 %}bg-orange-400
+                                     {% else %}bg-gray-700{% endif %}">
+                            {{ loop.index }}
+                        </span>
+                        <div class="min-w-0">
+                            <a href="{{ url_for('main.card_detail', card_id=card.id) }}"
+                               class="text-sm font-semibold text-gray-900 hover:text-indigo-600 truncate block">
+                                {{ card.player_name }}
+                            </a>
+                            <div class="text-xs text-gray-400">{{ card.year or '' }} {{ card.manufacturer or '' }}</div>
+                        </div>
+                    </div>
+                    <div class="text-right flex-shrink-0 ml-3">
+                        <div class="text-sm font-bold text-green-600">+${{ "{:,.2f}".format(card.profit_loss) }}</div>
+                        <div class="text-xs text-green-500">+{{ "%.0f"|format((card.profit_loss / card.buy_price) * 100) }}%</div>
+                    </div>
+                </li>
+                {%- endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-gray-400 text-center py-8">No profit data yet</p>
+            {% endif %}
+        </div>
+
+        <!-- Top Losers -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">📉 Top 5 Losers</h3>
+            {% if top_losers %}
+            <ul class="divide-y divide-gray-50">
+                {%- for card in top_losers %}
+                <li class="flex items-center justify-between py-2.5">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-red-100 text-red-600 text-xs font-bold flex items-center justify-center">
+                            {{ loop.index }}
+                        </span>
+                        <div class="min-w-0">
+                            <a href="{{ url_for('main.card_detail', card_id=card.id) }}"
+                               class="text-sm font-semibold text-gray-900 hover:text-indigo-600 truncate block">
+                                {{ card.player_name }}
+                            </a>
+                            <div class="text-xs text-gray-400">{{ card.year or '' }} {{ card.manufacturer or '' }}</div>
+                        </div>
+                    </div>
+                    <div class="text-right flex-shrink-0 ml-3">
+                        <div class="text-sm font-bold text-red-500">${{ "{:,.2f}".format(card.profit_loss) }}</div>
+                        <div class="text-xs text-red-400">{{ "%.0f"|format((card.profit_loss / card.buy_price) * 100) }}%</div>
+                    </div>
+                </li>
+                {%- endfor %}
+            </ul>
+            {% else %}
+            <p class="text-sm text-gray-400 text-center py-8">No loss data yet</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ROI by Sport — full width -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">ROI % by Sport</h3>
+        <div class="relative h-[180px]">
+            <canvas id="roiChart"></canvas>
+        </div>
+    </div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-// Profit by Sport Bar Chart
-const sportLabels = {{ sport_labels | tojson }};
-const sportProfits = {{ sport_profits | tojson }};
-const sportColors = sportProfits.map(v => v >= 0 ? 'rgba(46,204,113,0.8)' : 'rgba(233,69,96,0.8)');
-const sportBorders = sportProfits.map(v => v >= 0 ? '#27ae60' : '#e94560');
+const CHART_OPTS = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+        x: { grid: { display: false }, border: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, border: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } }
+    }
+};
+
+// Profit / Loss by Sport
+// TODO: replace placeholder data with real sport_labels / sport_profits from the backend
+const DEMO_SPORT_LABELS  = ['Baseball', 'Football', 'Basketball', 'Soccer', 'Hockey'];
+const DEMO_SPORT_PROFITS = [142.50, 87.00, -23.75, 55.00, -10.25];
+const sportLabels  = {{ sport_labels | tojson }}.length ? {{ sport_labels | tojson }} : DEMO_SPORT_LABELS;
+const sportProfits = {{ sport_profits | tojson }}.length ? {{ sport_profits | tojson }} : DEMO_SPORT_PROFITS;
 
 new Chart(document.getElementById('sportChart'), {
     type: 'bar',
@@ -199,49 +171,56 @@ new Chart(document.getElementById('sportChart'), {
         datasets: [{
             label: 'Profit / Loss',
             data: sportProfits,
-            backgroundColor: sportColors,
-            borderColor: sportBorders,
-            borderWidth: 2,
-            borderRadius: 6
+            backgroundColor: sportProfits.map(v => v >= 0 ? 'rgba(16,185,129,0.8)' : 'rgba(239,68,68,0.8)'),
+            borderRadius: 6,
+            borderSkipped: false
         }]
     },
     options: {
-        responsive: true,
+        ...CHART_OPTS,
         plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: ctx => '$' + ctx.parsed.y.toFixed(2) } }
+            tooltip: { callbacks: { label: ctx => ' $' + ctx.parsed.y.toFixed(2) } }
         },
         scales: {
-            y: { ticks: { callback: v => '$' + v } }
+            ...CHART_OPTS.scales,
+            y: {
+                ...CHART_OPTS.scales.y,
+                min: 0,
+                ticks: { ...CHART_OPTS.scales.y.ticks, callback: v => '$' + v }
+            }
         }
     }
 });
 
-// Collection Breakdown Pie Chart
+// Collection Breakdown Doughnut
 const breakdownLabels = {{ breakdown_labels | tojson }};
 const breakdownCounts = {{ breakdown_counts | tojson }};
+
 new Chart(document.getElementById('breakdownChart'), {
     type: 'doughnut',
     data: {
         labels: breakdownLabels,
         datasets: [{
             data: breakdownCounts,
-            backgroundColor: ['#e94560','#0f3460','#27ae60','#f39c12','#9b59b6','#1abc9c'],
-            borderWidth: 2
+            backgroundColor: ['#6366f1','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'],
+            borderWidth: 2,
+            borderColor: '#fff'
         }]
     },
     options: {
         responsive: true,
+        maintainAspectRatio: false,
         plugins: {
-            legend: { position: 'bottom' }
+            legend: { position: 'bottom', labels: { font: { size: 11 }, color: '#6b7280', padding: 12 } }
         }
     }
 });
 
-// ROI by Sport Bar Chart
+// ROI % by Sport
 const roiLabels = {{ roi_labels | tojson }};
 const roiValues = {{ roi_values | tojson }};
-const roiColors = roiValues.map(v => v >= 0 ? 'rgba(46,204,113,0.8)' : 'rgba(233,69,96,0.8)');
+
 new Chart(document.getElementById('roiChart'), {
     type: 'bar',
     data: {
@@ -249,21 +228,22 @@ new Chart(document.getElementById('roiChart'), {
         datasets: [{
             label: 'ROI %',
             data: roiValues,
-            backgroundColor: roiColors,
-            borderRadius: 6
+            backgroundColor: roiValues.map(v => v >= 0 ? 'rgba(99,102,241,0.8)' : 'rgba(239,68,68,0.8)'),
+            borderRadius: 6,
+            borderSkipped: false
         }]
     },
     options: {
-        responsive: true,
+        ...CHART_OPTS,
         plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: ctx => ctx.parsed.y.toFixed(1) + '%' } }
+            tooltip: { callbacks: { label: ctx => ' ' + ctx.parsed.y.toFixed(1) + '%' } }
         },
         scales: {
-            y: { ticks: { callback: v => v + '%' } }
+            ...CHART_OPTS.scales,
+            y: { ...CHART_OPTS.scales.y, ticks: { ...CHART_OPTS.scales.y.ticks, callback: v => v + '%' } }
         }
     }
 });
 </script>
-</body>
-</html>
+{% endblock %}

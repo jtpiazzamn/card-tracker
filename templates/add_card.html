@@ -1,260 +1,232 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <title>Card Tracker - Add Card</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <style>
-        .scan-section {
-            background: linear-gradient(135deg, #0f3460, #16213e);
-            border: 2px dashed #e94560;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 24px;
-        }
-        .scan-section h3 {
-            color: #e94560;
-            margin: 0 0 8px 0;
-            font-size: 16px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .scan-section p {
-            color: #a0a0b0;
-            font-size: 13px;
-            margin: 0 0 14px 0;
-        }
-        .btn-scan {
-            background: #e94560;
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .btn-scan:hover { background: #c73652; }
-        .btn-scan:disabled { background: #555; cursor: not-allowed; }
-        #scan-status {
-            margin-top: 12px;
-            font-size: 13px;
-            color: #a0a0b0;
-            min-height: 20px;
-        }
-        #scan-status.success { color: #4caf50; }
-        #scan-status.error { color: #e94560; }
-        #scan-preview {
-            max-width: 180px;
-            max-height: 180px;
-            border-radius: 8px;
-            margin: 12px auto 0;
-            display: none;
-            border: 2px solid #e94560;
-        }
-        .autofilled {
-            border-color: #4caf50 !important;
-            background-color: rgba(76, 175, 80, 0.05) !important;
-        }
-    </style>
-</head>
-<body>
-    <nav>
-        <h1>Card<span>Tracker</span></h1>
-        <div class="nav-right">
-            <span>Welcome, {{ current_user.username }}</span>
-            {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
-            {% endif %}
-            <a href="{{ url_for('auth.logout') }}">Logout</a>
-        </div>
-    </nav>
-    <div class="form-wrapper">
-        <div class="form-container">
-            <h2>Add New Card</h2>
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <div class="alert">{{ messages[0] }}</div>
-                {% endif %}
-            {% endwith %}
+{% extends 'base.html' %}
 
-            <!-- AI Scan Section -->
-            <div class="scan-section">
-                <h3>🤖 AI Card Scanner</h3>
-                <p>Upload a photo of your card and AI will automatically fill in the details</p>
-                <input type="file" id="scan-input" accept="image/*" style="display:none">
-                <button type="button" class="btn-scan" id="scan-btn" onclick="document.getElementById('scan-input').click()">
-                    📷 Scan Card with AI
-                </button>
-                <img id="scan-preview" src="" alt="Card preview">
-                <div id="scan-status"></div>
+{% block title %}Add Card — CardLedger{% endblock %}
+
+{% block head %}
+<style>
+    /* Applied by JS when AI scanner autofills a field */
+    .autofilled {
+        border-color: #4ade80 !important;
+        background-color: rgba(74, 222, 128, 0.05) !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg px-4 py-3 text-sm">
+                {{ messages[0] }}
             </div>
+        {% endif %}
+    {% endwith %}
 
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-xl font-semibold text-gray-900">Add New Card</h1>
+        <p class="text-sm text-gray-400 mt-0.5">Fill in the card details below or use AI to scan automatically</p>
+    </div>
+
+    <div class="max-w-2xl">
+
+        <!-- AI Card Scanner -->
+        <div class="bg-gray-900 border border-dashed border-indigo-500/60 rounded-xl p-5 mb-6 text-center">
+            <h3 class="text-sm font-semibold text-indigo-400 uppercase tracking-wide mb-1">🤖 AI Card Scanner</h3>
+            <p class="text-sm text-gray-400 mb-4">Upload a photo and AI will automatically fill in the details</p>
+            <input type="file" id="scan-input" accept="image/*" title="Upload card image for AI scan" class="hidden">
+            <button type="button" id="scan-btn"
+                    onclick="document.getElementById('scan-input').click()"
+                    class="text-sm bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-5 py-2 rounded-lg font-medium transition-colors">
+                📷 Scan Card with AI
+            </button>
+            <img id="scan-preview" src="" alt="Card preview"
+                 class="hidden max-w-[180px] max-h-[180px] rounded-lg border-2 border-indigo-500 mx-auto mt-4 object-contain">
+            <div id="scan-status" class="text-sm text-gray-400 mt-3 min-h-[20px]"></div>
+        </div>
+
+        <!-- Form -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <form method="POST" enctype="multipart/form-data" id="card-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="form-group">
-                    <label>Player Name *</label>
-                    <input type="text" name="player_name" id="player_name" placeholder="e.g. Mickey Mantle" required>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="player_name">
+                        Player Name <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" name="player_name" id="player_name"
+                           placeholder="e.g. Mickey Mantle" required
+                           class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
                 </div>
-                <div class="form-group">
-                    <label>Sport</label>
-                    <select name="sport" id="sport">
-                        <option value="">Select Sport</option>
-                        <option value="Baseball">Baseball</option>
-                        <option value="Basketball">Basketball</option>
-                        <option value="Football">Football</option>
-                        <option value="Hockey">Hockey</option>
-                        <option value="Soccer">Soccer</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Year</label>
-                    <input type="text" name="year" id="year" placeholder="e.g. 1952">
-                </div>
-                <div class="form-group">
-                    <label>Manufacturer</label>
-                    <input type="text" name="manufacturer" id="manufacturer" placeholder="e.g. Topps">
-                </div>
-                <div class="form-group">
-                    <label>Condition</label>
-                    <select name="condition" id="condition">
-                        <option value="">Select Condition</option>
-                        <option value="Poor">Poor</option>
-                        <option value="Fair">Fair</option>
-                        <option value="Good">Good</option>
-                        <option value="Very Good">Very Good</option>
-                        <option value="Excellent">Excellent</option>
-                        <option value="Near Mint">Near Mint</option>
-                        <option value="Mint">Mint</option>
-                        <option value="Gem Mint">Gem Mint</option>
-                    </select>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Buy Price *</label>
-                        <input type="number" name="buy_price" step="0.01" placeholder="0.00" required>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5" for="sport">Sport</label>
+                        <select name="sport" id="sport"
+                                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                            <option value="">Select Sport</option>
+                            <option value="Baseball">Baseball</option>
+                            <option value="Basketball">Basketball</option>
+                            <option value="Football">Football</option>
+                            <option value="Hockey">Hockey</option>
+                            <option value="Soccer">Soccer</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
-                    <div class="form-group">
-                        <label>Sell Price (if sold)</label>
-                        <input type="number" name="sell_price" step="0.01" placeholder="0.00">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5" for="year">Year</label>
+                        <input type="text" name="year" id="year" placeholder="e.g. 1952"
+                               class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Folder (optional)</label>
-                    <select name="folder_id">
-                        <option value="">-- No Folder --</option>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5" for="manufacturer">Manufacturer</label>
+                        <input type="text" name="manufacturer" id="manufacturer" placeholder="e.g. Topps"
+                               class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5" for="condition">Condition</label>
+                        <select name="condition" id="condition"
+                                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                            <option value="">Select Condition</option>
+                            <option value="Poor">Poor</option>
+                            <option value="Fair">Fair</option>
+                            <option value="Good">Good</option>
+                            <option value="Very Good">Very Good</option>
+                            <option value="Excellent">Excellent</option>
+                            <option value="Near Mint">Near Mint</option>
+                            <option value="Mint">Mint</option>
+                            <option value="Gem Mint">Gem Mint</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                            Buy Price <span class="text-red-400">*</span>
+                        </label>
+                        <input type="number" name="buy_price" step="0.01" placeholder="0.00" required
+                               class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Sell Price <span class="text-gray-400 font-normal">(if sold)</span></label>
+                        <input type="number" name="sell_price" step="0.01" placeholder="0.00"
+                               class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Folder <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <select name="folder_id"
+                            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white">
+                        <option value="">— No Folder —</option>
                         {% for folder in folders %}
                             <option value="{{ folder.id }}">📁 {{ folder.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Notes</label>
-                    <textarea name="notes" id="notes" placeholder="e.g. Purchased at card show, signed copy, PSA graded..." rows="3" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-family:inherit; font-size:14px; resize:vertical;"></textarea>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="notes">Notes</label>
+                    <textarea name="notes" id="notes" rows="3"
+                              placeholder="e.g. Purchased at card show, signed copy, PSA graded..."
+                              class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white resize-y"></textarea>
                 </div>
-                <div class="form-group">
-                    <label>Card Photo</label>
-                    <input type="file" name="photo" id="photo" accept="image/*">
+
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="photo">Card Photo</label>
+                    <input type="file" name="photo" id="photo" accept="image/*"
+                           class="w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                 </div>
-                <div class="form-buttons">
-                    <a href="{{ url_for('main.dashboard') }}" class="btn-cancel">Cancel</a>
-                    <button type="submit" class="btn">Add Card</button>
+
+                <div class="flex items-center justify-between pt-4 border-t border-gray-100">
+                    <a href="{{ url_for('main.dashboard') }}"
+                       class="text-sm text-gray-500 hover:text-gray-700 font-medium">
+                        Cancel
+                    </a>
+                    <button type="submit"
+                            class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-lg font-medium transition-colors">
+                        Add Card
+                    </button>
                 </div>
+
             </form>
         </div>
     </div>
+{% endblock %}
 
-    <script>
-        const scanInput = document.getElementById('scan-input');
-        const scanBtn = document.getElementById('scan-btn');
-        const scanStatus = document.getElementById('scan-status');
-        const scanPreview = document.getElementById('scan-preview');
+{% block scripts %}
+<script>
+    const scanInput  = document.getElementById('scan-input');
+    const scanBtn    = document.getElementById('scan-btn');
+    const scanStatus = document.getElementById('scan-status');
+    const scanPreview = document.getElementById('scan-preview');
 
-        scanInput.addEventListener('change', async function() {
-            const file = this.files[0];
-            if (!file) return;
+    scanInput.addEventListener('change', async function () {
+        const file = this.files[0];
+        if (!file) return;
 
-            // Show preview
-            const reader = new FileReader();
-            reader.onload = e => {
-                scanPreview.src = e.target.result;
-                scanPreview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = e => {
+            scanPreview.src = e.target.result;
+            scanPreview.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
 
-            // Also copy to the photo field
-            const photoField = document.getElementById('photo');
-            const dt = new DataTransfer();
-            dt.items.add(file);
-            photoField.files = dt.files;
+        // Copy to the main photo field
+        const photoField = document.getElementById('photo');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        photoField.files = dt.files;
 
-            // Send to Flask backend
-            scanBtn.disabled = true;
-            scanBtn.textContent = '🔍 Scanning...';
-            scanStatus.className = '';
-            scanStatus.textContent = 'Analyzing your card with AI...';
+        // Send to Flask backend
+        scanBtn.disabled = true;
+        scanBtn.textContent = '🔍 Scanning...';
+        scanStatus.className = 'text-sm mt-3 min-h-[20px] text-gray-400';
+        scanStatus.textContent = 'Analyzing your card with AI...';
 
-            try {
-                const result = await scanCardWithAI(file);
-                fillForm(result);
-                scanStatus.className = 'success';
-                scanStatus.textContent = '✅ Card identified! Please review and confirm the details below.';
-            } catch (err) {
-                scanStatus.className = 'error';
-                scanStatus.textContent = '❌ Could not identify card. Please fill in details manually.';
-                console.error(err);
-            } finally {
-                scanBtn.disabled = false;
-                scanBtn.textContent = '📷 Scan Card with AI';
+        try {
+            const result = await scanCardWithAI(file);
+            fillForm(result);
+            scanStatus.className = 'text-sm mt-3 min-h-[20px] text-green-400';
+            scanStatus.textContent = '✅ Card identified! Please review and confirm the details below.';
+        } catch (err) {
+            scanStatus.className = 'text-sm mt-3 min-h-[20px] text-red-400';
+            scanStatus.textContent = '❌ Could not identify card. Please fill in details manually.';
+            console.error(err);
+        } finally {
+            scanBtn.disabled = false;
+            scanBtn.textContent = '📷 Scan Card with AI';
+        }
+    });
+
+    async function scanCardWithAI(file) {
+        const formData = new FormData();
+        formData.append('image', file);
+        const response = await fetch('/scan_card', { method: 'POST', body: formData });
+        if (!response.ok) throw new Error('Scan request failed');
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        return data;
+    }
+
+    function fillForm(data) {
+        ['player_name', 'year', 'manufacturer', 'notes'].forEach(field => {
+            if (data[field]) {
+                const el = document.getElementById(field);
+                if (el) { el.value = data[field]; el.classList.add('autofilled'); }
             }
         });
-
-        async function scanCardWithAI(file) {
-            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-            const formData = new FormData();
-            formData.append('image', file);
-
-            const response = await fetch('/scan_card', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                },
-                body: formData
-            });
-
-            if (!response.ok) throw new Error('Scan request failed');
-            const data = await response.json();
-            if (data.error) throw new Error(data.error);
-            return data;
+        if (data.sport) {
+            const sportEl = document.getElementById('sport');
+            const match = Array.from(sportEl.options).find(
+                o => o.value.toLowerCase() === data.sport.toLowerCase()
+            );
+            if (match) { sportEl.value = match.value; sportEl.classList.add('autofilled'); }
         }
-
-        function fillForm(data) {
-            const fields = ['player_name', 'year', 'manufacturer', 'notes'];
-            fields.forEach(field => {
-                if (data[field]) {
-                    const el = document.getElementById(field);
-                    if (el) {
-                        el.value = data[field];
-                        el.classList.add('autofilled');
-                    }
-                }
-            });
-
-            // Handle sport dropdown
-            if (data.sport) {
-                const sportEl = document.getElementById('sport');
-                const options = Array.from(sportEl.options);
-                const match = options.find(o => o.value.toLowerCase() === data.sport.toLowerCase());
-                if (match) {
-                    sportEl.value = match.value;
-                    sportEl.classList.add('autofilled');
-                }
-            }
-        }
-    </script>
-</body>
-</html>
+    }
+</script>
+{% endblock %}

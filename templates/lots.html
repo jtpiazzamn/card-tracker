@@ -1,92 +1,89 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"><link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-    <title>CardLedger - Lots</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <nav>
-        <h1>Card<span>Ledger</span></h1>
-        <div class="nav-right">
-            <span>Welcome, {{ current_user.username }}</span>
-            {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.admin_dashboard') }}" style="background:#0f3460;">Admin</a>
-            {% endif %}
-            <a href="{{ url_for('auth.logout') }}">Logout</a>
+{% extends 'base.html' %}
+
+{% block title %}Lots — CardLedger{% endblock %}
+
+{% block content %}
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg px-4 py-3 text-sm">
+                {{ messages[0] }}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Page Header -->
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-xl font-semibold text-gray-900">Lot Sales</h1>
+            <p class="text-sm text-gray-400 mt-0.5">Groups of cards sold together</p>
         </div>
-    </nav>
-    <div class="page-wrapper">
-        <div class="dashboard-container">
-            {% with messages = get_flashed_messages() %}
-                {% if messages %}
-                    <div class="alert" style="margin-bottom:20px;">{{ messages[0] }}</div>
-                {% endif %}
-            {% endwith %}
-
-            <div class="section-header">
-                <div class="section-title">Lot Sales</div>
-                <div style="display:flex; gap:10px;">
-                    <a href="{{ url_for('main.dashboard') }}" class="btn" style="background:#666;">Back to Dashboard</a>
-                    <a href="{{ url_for('main.create_lot') }}" class="btn">+ Create New Lot</a>
-                </div>
-            </div>
-
-            {% if lots %}
-            <div style="margin-top:20px;">
-                {% for lot in lots %}
-                <div style="background:white; border-radius:12px; padding:25px; margin-bottom:20px; box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-                    <div style="display:flex; justify-content:space-between; align-items:start; flex-wrap:wrap; gap:10px;">
-                        <div>
-                            <h3 style="margin:0; color:#1a1a2e; font-size:18px;">{{ lot.name }}</h3>
-                            <p style="margin:5px 0 0; color:#888; font-size:13px;">
-                                Sold on {{ lot.date_sold.strftime('%B %d, %Y') }} &bull; {{ lot.card_count }} cards
-                            </p>
-                            {% if lot.notes %}
-                                <p style="margin:5px 0 0; color:#666; font-size:13px;">{{ lot.notes }}</p>
-                            {% endif %}
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:22px; font-weight:700; color:#1a1a2e;">${{ "%.2f"|format(lot.total_sale_price) }}</div>
-                            <div style="font-size:13px; color:#888;">Paid: ${{ "%.2f"|format(lot.total_buy_price) }}</div>
-                            <div style="font-size:15px; font-weight:700; {% if lot.profit_loss >= 0 %}color:#2ecc71{% else %}color:#e94560{% endif %}">
-                                {% if lot.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(lot.profit_loss) }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="margin-top:15px; border-top:1px solid #f0f0f0; padding-top:15px;">
-                        <p style="font-size:12px; font-weight:700; color:#888; margin-bottom:10px;">CARDS IN THIS LOT</p>
-                        <div style="display:flex; flex-wrap:wrap; gap:8px;">
-                            {% for card in lot.cards %}
-                            <div style="background:#f8f9fa; border-radius:8px; padding:8px 12px; font-size:13px;">
-                                <strong>{{ card.player_name }}</strong>
-                                {% if card.year %} · {{ card.year }}{% endif %}
-                                {% if card.sport %} · {{ card.sport }}{% endif %}
-                                <span style="color:#888;"> (Paid: ${{ "%.2f"|format(card.buy_price) }})</span>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    <div style="margin-top:15px; text-align:right;">
-                        <a href="{{ url_for('main.delete_lot', lot_id=lot.id) }}"
-                           onclick="return confirm('Delete this lot? Cards will be returned to your collection.')"
-                           style="color:#e94560; font-size:13px; text-decoration:none;">
-                            Delete Lot
-                        </a>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="empty-state" style="margin-top:40px;">
-                <p>No lots created yet.</p>
-                <a href="{{ url_for('main.create_lot') }}" class="btn">+ Create Your First Lot</a>
-            </div>
-            {% endif %}
-        </div>
+        <a href="{{ url_for('main.create_lot') }}"
+           class="text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+            + Create New Lot
+        </a>
     </div>
-</body>
-</html>
+
+    {% if lots %}
+    <div class="flex flex-col gap-4">
+        {% for lot in lots %}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+
+            <!-- Lot header row -->
+            <div class="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-900">{{ lot.name }}</h3>
+                    <p class="text-sm text-gray-400 mt-0.5">
+                        Sold on {{ lot.date_sold.strftime('%B %d, %Y') }} &bull; {{ lot.card_count }} card{{ 's' if lot.card_count != 1 }}
+                    </p>
+                    {% if lot.notes %}
+                        <p class="text-sm text-gray-500 mt-1">{{ lot.notes }}</p>
+                    {% endif %}
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <div class="text-2xl font-bold text-gray-900">${{ "%.2f"|format(lot.total_sale_price) }}</div>
+                    <div class="text-xs text-gray-400 mt-0.5">Paid: ${{ "%.2f"|format(lot.total_buy_price) }}</div>
+                    <div class="text-base font-bold mt-1 {% if lot.profit_loss >= 0 %}text-green-600{% else %}text-red-500{% endif %}">
+                        {% if lot.profit_loss >= 0 %}+{% endif %}${{ "%.2f"|format(lot.profit_loss) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cards in lot -->
+            <div class="mt-4 pt-4 border-t border-gray-100">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Cards in this lot</p>
+                <div class="flex flex-wrap gap-2">
+                    {% for card in lot.cards %}
+                    <div class="bg-gray-50 border border-gray-100 rounded-lg px-3 py-1.5 text-sm">
+                        <span class="font-medium text-gray-800">{{ card.player_name }}</span>
+                        {% if card.year %}<span class="text-gray-400"> · {{ card.year }}</span>{% endif %}
+                        {% if card.sport %}<span class="text-gray-400"> · {{ card.sport }}</span>{% endif %}
+                        <span class="text-gray-400"> (Paid: ${{ "%.2f"|format(card.buy_price) }})</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Delete -->
+            <div class="mt-4 flex justify-end">
+                <a href="{{ url_for('main.delete_lot', lot_id=lot.id) }}"
+                   onclick="return confirm('Delete this lot? Cards will be returned to your collection.')"
+                   class="text-sm text-red-400 hover:text-red-600 font-medium transition-colors">
+                    Delete Lot
+                </a>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <div class="text-center py-24">
+        <p class="text-gray-400 text-sm mb-4">No lots created yet.</p>
+        <a href="{{ url_for('main.create_lot') }}"
+           class="inline-block bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors">
+            + Create Your First Lot
+        </a>
+    </div>
+    {% endif %}
+{% endblock %}
